@@ -19,6 +19,10 @@ from controllers.settings_controller import open_setting
 from controllers.keyboard_controller import type_text, press_key
 from controllers.screen_reader_controller import read_screen, read_screen_region, analyze_screen
 from controllers.form_filler_controller import fill_form, get_profile, update_profile
+from controllers.window_controller import (
+    wait_for_window, is_correct_window_active,
+    ensure_app_focused, get_active_window_title
+)
 from database.sqlite_manager import find_project
 from ai.memory import update_last_project
 
@@ -61,7 +65,11 @@ async def execute_task(task: dict, user_id: str = "default", prev_tool: str = ""
     # ── Dispatch ──────────────────────────────────────────────────────────────
 
     if tool == "open_application":
-        return await loop.run_in_executor(None, open_application, task.get("name", ""))
+        name = task.get("name", "")
+        result = await loop.run_in_executor(None, open_application, name)
+        # Verify the app actually opened
+        await loop.run_in_executor(None, wait_for_window, name, 5)
+        return result
 
     elif tool == "open_project":
         project_name = task.get("project", "")
@@ -69,6 +77,7 @@ async def execute_task(task: dict, user_id: str = "default", prev_tool: str = ""
         if not project:
             return f"Project '{project_name}' not found in registry"
         result = await loop.run_in_executor(None, open_vscode, project["path"])
+        await loop.run_in_executor(None, wait_for_window, "code", 5)
         update_last_project(user_id, project)
         return result
 
@@ -76,12 +85,17 @@ async def execute_task(task: dict, user_id: str = "default", prev_tool: str = ""
         return await loop.run_in_executor(None, open_file, task.get("name", ""))
 
     elif tool == "open_browser":
-        return await open_url(task.get("url", "https://google.com"))
+        url = task.get("url", "https://google.com")
+        result = await open_url(url)
+        # Wait for browser to appear
+        await loop.run_in_executor(None, wait_for_window, "chrome", 5)
+        return result
 
     elif tool == "navigate":
-        # Navigate to a URL in the already-open browser
         url = task.get("url", "")
-        return await open_url(url)
+        result = await open_url(url)
+        await asyncio.sleep(2)  # Wait for navigation
+        return result
 
     elif tool == "search_web":
         return await search_web(task.get("query", ""))
@@ -109,18 +123,29 @@ async def execute_task(task: dict, user_id: str = "default", prev_tool: str = ""
         return await loop.run_in_executor(None, open_setting, task.get("name", ""))
 
     elif tool == "compose_email":
-        return await open_gmail_compose(
+        result = await open_gmail_compose(
             task.get("to", ""),
             task.get("subject", ""),
             task.get("body", ""),
         )
+        # Wait for browser/Gmail to open
+        await loop.run_in_executor(None, wait_for_window, "mail", 5)
+        return result
 
     elif tool == "type_text":
         text = task.get("text", "")
+        # Safety check: verify something meaningful is in focus
+        active_title = await loop.run_in_executor(None, get_active_window_title)
+        if not active_title or active_title.lower() in ["", "desktop", "taskbar"]:
+            return "Cannot type — no application window is in focus. Open an app first."
+        log.info(f"Typing into: '{active_title}'")
         return await loop.run_in_executor(None, type_text, text)
 
     elif tool == "press_key":
         key = task.get("key", "")
+        active_title = await loop.run_in_executor(None, get_active_window_title)
+        if not active_title:
+            return "Cannot press key — no window in focus"
         return await loop.run_in_executor(None, press_key, key)
 
     elif tool == "click_element":

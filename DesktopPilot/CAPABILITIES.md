@@ -303,6 +303,97 @@ Screenshot (PyAutoGUI) → PNG image → Amazon Textract → Extracted text
 
 ---
 
+## 📝 Smart Form Filling
+
+### Setup your profile first
+
+| Command | What happens |
+|---|---|
+| "Set my name to John Doe" | Saves name to profile |
+| "Set my email to john@gmail.com" | Saves email to profile |
+| "Set my phone to 9876543210" | Saves phone to profile |
+| "Set my address to 123 Main Street" | Saves address to profile |
+| "Set my city to Mumbai" | Saves city to profile |
+| "Show my profile" | Displays all saved profile data |
+
+Or edit `backend/user_profile.json` directly.
+
+### Fill forms automatically
+
+| Command | What happens |
+|---|---|
+| "Fill this form with my details" | Reads screen → detects form fields → fills matching data |
+| "Fill the form" | Same — auto-detects Name, Email, Phone, Address fields |
+
+### How it works
+
+```
+1. Captures screen screenshot
+2. Amazon Textract detects form labels (Name, Email, Phone, etc.)
+3. Matches labels to your saved profile data
+4. Uses Tab + keyboard typing to fill each field automatically
+```
+
+### Recognized form fields
+
+| Form label on screen | Profile field it fills |
+|---|---|
+| Name / Full Name | full_name |
+| First Name | first_name |
+| Last Name | last_name |
+| Email / E-mail / Email Address | email |
+| Phone / Mobile / Contact | phone |
+| Address / Street / Street Address | address |
+| City | city |
+| State / Province | state |
+| ZIP / Zip Code / Pincode / Pin Code | zip_code |
+| Country | country |
+| DOB / Date of Birth / Birthday | date_of_birth |
+| Company / Organization | company |
+| Job Title / Position / Role | job_title |
+| LinkedIn | linkedin |
+| GitHub | github |
+| Website / URL | website |
+
+### Works on any form
+
+- Web forms (Chrome, Firefox)
+- Desktop app forms
+- PDF forms displayed on screen
+- Any application with visible text labels
+
+---
+
+## 🔗 Multi-Step Chaining
+
+The agent can execute complex multi-step commands where each step depends on the previous one completing.
+
+| Command Example | Steps Executed |
+|---|---|
+| "Open Notepad, write a shopping list, and save it" | open_application → type_text → press_key(ctrl+s) → type_text(filename) → press_key(enter) |
+| "Open Chrome, go to GitHub, search for DesktopPilot" | open_browser → wait → type_text(url) → press_key(enter) → wait → type_text(query) → press_key(enter) |
+| "Create a project, install dependencies, start server, open browser" | create_project → run_terminal(npm install) → run_terminal(npm start) → wait_for_server → open_browser |
+
+### Smart auto-wait between steps
+
+The system automatically pauses between dependent steps:
+
+| After this step | Auto-wait | Why |
+|---|---|---|
+| Open application | 2.0s | App needs time to launch |
+| Open browser / navigate | 3.0s | Page needs time to load |
+| Open project (VS Code) | 2.5s | Editor needs time to open |
+| Run terminal command | 1.5s | Terminal needs to appear |
+| Create file | 1.5s | File opens in app |
+| Search web | 3.0s | Results need to load |
+
+### Explicit wait
+
+You can also request a specific pause:
+- "Wait 5 seconds then type hello" → `wait(5)` → `type_text("hello")`
+
+---
+
 ## ❌ What It CANNOT Do (Yet)
 
 | Limitation | Reason |

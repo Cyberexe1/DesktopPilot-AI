@@ -343,3 +343,39 @@ async def analyze_screen_route():
         return ok(result)
     except Exception as e:
         err(str(e))
+
+
+# ── User Profile ──────────────────────────────────────────────────────────────
+
+@app.get("/profile")
+async def get_profile_route():
+    from controllers.form_filler_controller import get_profile
+    try:
+        return ok({"profile": get_profile()})
+    except Exception as e:
+        err(str(e))
+
+class ProfileUpdateRequest(BaseModel):
+    field: str
+    value: str
+
+@app.post("/profile")
+async def update_profile_route(req: ProfileUpdateRequest):
+    from controllers.form_filler_controller import update_profile
+    try:
+        result = update_profile(req.field, req.value)
+        return ok({"message": result})
+    except Exception as e:
+        err(str(e))
+
+class ProfileBulkRequest(BaseModel):
+    profile: dict
+
+@app.put("/profile")
+async def set_full_profile(req: ProfileBulkRequest):
+    from controllers.form_filler_controller import save_profile
+    try:
+        result = save_profile(req.profile)
+        return ok({"message": result})
+    except Exception as e:
+        err(str(e))

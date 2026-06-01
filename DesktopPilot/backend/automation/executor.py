@@ -4,6 +4,7 @@ Supports multi-step chaining with automatic waits between dependent steps.
 """
 
 import asyncio
+import json
 import logging
 import time
 
@@ -17,6 +18,7 @@ from controllers.terminal_controller import run_in_terminal, open_vscode
 from controllers.settings_controller import open_setting
 from controllers.keyboard_controller import type_text, press_key
 from controllers.screen_reader_controller import read_screen, read_screen_region, analyze_screen
+from controllers.form_filler_controller import fill_form, get_profile, update_profile
 from database.sqlite_manager import find_project
 from ai.memory import update_last_project
 
@@ -152,6 +154,19 @@ async def execute_task(task: dict, user_id: str = "default", prev_tool: str = ""
     elif tool == "analyze_screen":
         result = await loop.run_in_executor(None, analyze_screen)
         return f"Screen text ({result['line_count']} lines):\n{result['text'][:500]}"
+
+    elif tool == "fill_form":
+        return await loop.run_in_executor(None, fill_form)
+
+    elif tool == "set_profile":
+        field = task.get("field", "")
+        value = task.get("value", "")
+        return await loop.run_in_executor(None, update_profile, field, value)
+
+    elif tool == "get_profile":
+        profile = get_profile()
+        filled = {k: v for k, v in profile.items() if v}
+        return f"Profile: {json.dumps(filled, indent=2)}" if filled else "Profile is empty"
 
     else:
         return f"Unknown tool: {tool}"

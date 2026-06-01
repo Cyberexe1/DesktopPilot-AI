@@ -46,6 +46,9 @@ Available tools (use ONLY these exact names):
 - wait               params: seconds (number) — pause between steps (use when next step depends on previous)
 - navigate           params: url (string) — navigate to a URL in the already-open browser
 - click_element      params: x (number), y (number) — click at screen coordinates
+- fill_form          params: none — reads screen for form fields and fills them with user profile data
+- set_profile        params: field (string), value (string) — save user info (name, email, phone, etc.)
+- get_profile        params: none — show current user profile data
 
 Rules:
 1. Return ONLY valid JSON. No explanation, no markdown, no code blocks.

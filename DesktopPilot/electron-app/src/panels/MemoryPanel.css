@@ -1,0 +1,12 @@
+.memory-card { margin-bottom: 0.75rem; }
+.memory-card-header { display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.5rem; }
+.memory-value { display: flex; flex-direction: column; gap: 0.2rem; }
+.memory-name { font-size: 0.875rem; font-weight: 600; }
+
+.recent-list { list-style: none; display: flex; flex-direction: column; gap: 0.35rem; margin-top: 0.5rem; }
+.recent-item { display: flex; align-items: center; gap: 0.4rem; }
+
+.memory-info { background: var(--surface2); }
+.info-list { list-style: none; display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.5rem; }
+.info-list li { padding-left: 0.75rem; position: relative; line-height: 1.5; }
+.info-list li::before { content: '→'; position: absolute; left: 0; color: var(--accent); }

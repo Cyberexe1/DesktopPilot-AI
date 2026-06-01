@@ -1,0 +1,67 @@
+.docs { padding: 2rem 1.5rem; }
+
+.docs-header { margin-bottom: 2rem; }
+.docs-header h1 { font-size: 2rem; font-weight: 700; }
+
+.docs-body {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+@media (max-width: 768px) {
+  .docs-body { grid-template-columns: 1fr; }
+  .docs-nav { display: none; }
+}
+
+.docs-nav {
+  position: sticky;
+  top: 80px;
+}
+
+.docs-nav p { margin-bottom: 0.75rem; }
+
+.docs-nav ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.docs-nav a {
+  font-size: 0.875rem;
+  color: var(--muted);
+  transition: color 0.2s;
+}
+.docs-nav a:hover { color: var(--text); text-decoration: none; }
+
+.docs-content { display: flex; flex-direction: column; gap: 1rem; }
+
+.docs-section h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: var(--accent);
+}
+
+.docs-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.docs-list li {
+  font-size: 0.9rem;
+  color: var(--muted);
+  padding-left: 1rem;
+  position: relative;
+}
+
+.docs-list li::before {
+  content: '→';
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+}

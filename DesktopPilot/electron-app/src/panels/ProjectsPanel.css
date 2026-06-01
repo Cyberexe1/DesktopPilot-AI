@@ -1,0 +1,18 @@
+.add-form { margin-bottom: 1rem; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin: 0.5rem 0; }
+.form-field { display: flex; flex-direction: column; gap: 0.25rem; }
+.form-field-full { grid-column: 1 / -1; }
+.form-label { display: block; }
+.path-row { display: flex; gap: 0.4rem; }
+.path-row .input { flex: 1; }
+.form-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
+
+.projects-list { display: flex; flex-direction: column; gap: 0.6rem; }
+
+.project-card { padding: 0.75rem; }
+.project-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.35rem; }
+.project-info { display: flex; align-items: center; gap: 0.5rem; }
+.project-name { font-size: 0.875rem; font-weight: 600; }
+.project-actions { display: flex; gap: 0.25rem; }
+.project-path { margin-bottom: 0.2rem; }
+.project-cmd { color: var(--accent); }

@@ -1,0 +1,57 @@
+.settings-body { display: flex; flex-direction: column; gap: 0.75rem; }
+.settings-section { display: flex; flex-direction: column; gap: 0.5rem; }
+
+.backend-status { display: flex; flex-direction: column; gap: 0.5rem; }
+.status-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0; }
+.status-dot-sm { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.status-ok  .status-dot-sm { background: var(--success); box-shadow: 0 0 4px var(--success); }
+.status-warn .status-dot-sm { background: var(--warning); }
+.status-actions { display: flex; gap: 0.4rem; }
+
+.test-result {
+  display: flex; align-items: center; gap: 0.4rem;
+  padding: 0.4rem 0.6rem; border-radius: var(--radius-sm);
+}
+.result-ok   { background: #16532920; color: var(--success); }
+.result-fail { background: #7f1d1d20; color: var(--danger); }
+
+.settings-note {
+  display: flex; align-items: flex-start; gap: 0.4rem;
+  background: var(--surface2); border-radius: var(--radius-sm);
+  padding: 0.5rem 0.6rem; margin-bottom: 0.25rem;
+}
+.settings-note code { font-family: monospace; color: var(--accent); }
+
+.settings-fields { display: flex; flex-direction: column; gap: 0.5rem; }
+.setting-field { display: flex; flex-direction: column; gap: 0.2rem; }
+
+.toggle-list { display: flex; flex-direction: column; gap: 0.5rem; }
+.toggle-row {
+  display: flex; align-items: center; justify-content: space-between;
+  cursor: pointer; padding: 0.25rem 0;
+}
+
+.toggle {
+  width: 36px; height: 20px;
+  background: var(--surface3); border-radius: 999px;
+  position: relative; cursor: pointer;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+.toggle-on { background: var(--accent); }
+.toggle-thumb {
+  position: absolute; top: 2px; left: 2px;
+  width: 16px; height: 16px;
+  background: #fff; border-radius: 50%;
+  transition: transform 0.2s;
+}
+.toggle-on .toggle-thumb { transform: translateX(16px); }
+
+.links-list { display: flex; flex-direction: column; gap: 0.3rem; }
+.link-btn {
+  display: flex; align-items: center; gap: 0.4rem;
+  background: transparent; color: var(--accent);
+  padding: 0.3rem 0; text-align: left;
+  transition: opacity 0.15s;
+}
+.link-btn:hover { opacity: 0.75; }

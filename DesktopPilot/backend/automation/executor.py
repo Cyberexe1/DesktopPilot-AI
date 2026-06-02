@@ -23,6 +23,7 @@ from controllers.window_controller import (
     wait_for_window, is_correct_window_active,
     ensure_app_focused, get_active_window_title
 )
+from controllers.whatsapp_controller import send_whatsapp_message, open_whatsapp
 from database.sqlite_manager import find_project
 from ai.memory import update_last_project
 
@@ -192,6 +193,14 @@ async def execute_task(task: dict, user_id: str = "default", prev_tool: str = ""
         profile = get_profile()
         filled = {k: v for k, v in profile.items() if v}
         return f"Profile: {json.dumps(filled, indent=2)}" if filled else "Profile is empty"
+
+    elif tool == "send_whatsapp":
+        contact = task.get("contact", task.get("to", ""))
+        message = task.get("message", task.get("text", ""))
+        return await send_whatsapp_message(contact, message)
+
+    elif tool == "open_whatsapp":
+        return await open_whatsapp()
 
     else:
         return f"Unknown tool: {tool}"

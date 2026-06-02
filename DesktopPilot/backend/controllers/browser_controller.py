@@ -39,8 +39,11 @@ async def search_web(query: str) -> str:
 
 async def open_gmail_compose(to: str = "", subject: str = "", body: str = "") -> str:
     """Open Gmail compose with pre-filled fields.
-    Uses URL-based compose in the user's default browser (where they're already logged in).
-    This is more reliable than Playwright since it uses the existing Gmail session."""
+    Uses URL method first. If fields aren't filled (common issue), 
+    falls back to keyboard automation after the compose window opens."""
+    import subprocess
+    import time
+
     params = urllib.parse.urlencode({
         "view": "cm",
         "to":   to,
@@ -48,7 +51,57 @@ async def open_gmail_compose(to: str = "", subject: str = "", body: str = "") ->
         "body": body,
     })
     url = f"https://mail.google.com/mail/?{params}"
-    return _subprocess_open(url)
+
+    # Open the compose URL
+    subprocess.Popen(["cmd", "/c", "start", "", url], shell=False)
+
+    # Wait for Gmail to load
+    time.sleep(5)
+
+    # Now use keyboard to fill fields as backup
+    # Gmail compose opens with cursor in "To" field
+    import pyautogui
+
+    try:
+        # Fill To field (if not already filled by URL)
+        if to:
+            pyautogui.hotkey('ctrl', 'a')
+            time.sleep(0.2)
+            pyautogui.typewrite(to, interval=0.02) if to.isascii() else _clipboard_paste(to)
+            time.sleep(0.3)
+
+        # Tab to Subject
+        pyautogui.press('tab')
+        time.sleep(0.3)
+
+        # Fill Subject
+        if subject:
+            pyautogui.hotkey('ctrl', 'a')
+            time.sleep(0.1)
+            _clipboard_paste(subject)
+            time.sleep(0.3)
+
+        # Tab to Body
+        pyautogui.press('tab')
+        time.sleep(0.3)
+
+        # Fill Body
+        if body:
+            _clipboard_paste(body)
+
+        return f"Gmail compose filled — to: {to}, subject: {subject}"
+
+    except Exception as e:
+        log.warning(f"Gmail keyboard fill failed: {e}")
+        return f"Gmail compose opened (URL method) — to: {to}, subject: {subject}"
+
+
+def _clipboard_paste(text: str):
+    """Paste text via clipboard (handles unicode)."""
+    import pyperclip
+    import pyautogui
+    pyperclip.copy(text)
+    pyautogui.hotkey('ctrl', 'v')
 
 
 # ── Playwright implementations ────────────────────────────────────────────────

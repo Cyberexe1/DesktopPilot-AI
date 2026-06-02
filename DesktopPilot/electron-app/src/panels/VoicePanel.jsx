@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react'
-import { Mic, MicOff, Loader, CheckCircle, XCircle, Clock, ChevronRight } from 'lucide-react'
+import { Mic, MicOff, Loader, CheckCircle, XCircle, Clock, ChevronRight, Send } from 'lucide-react'
 import { useAgent } from '../context/AgentContext'
 import './VoicePanel.css'
 
@@ -16,6 +16,7 @@ export default function VoicePanel() {
   const [planData, setPlan]     = useState(null)
   const [execSteps, setExec]    = useState([])
   const [error, setError]       = useState('')
+  const [chatText, setChatText] = useState('')
   const mediaRef  = useRef(null)
   const chunksRef = useRef([])
 
@@ -86,7 +87,33 @@ export default function VoicePanel() {
     }
   }
 
-  const reset = () => { setStep(S.IDLE); setTrans(''); setPlan(null); setExec([]); setError('') }
+  const reset = () => { setStep(S.IDLE); setTrans(''); setPlan(null); setExec([]); setError(''); setChatText('') }
+
+  /* ── Chat input submit (text command instead of voice) ── */
+  const handleChatSubmit = async (e) => {
+    e.preventDefault()
+    const text = chatText.trim()
+    if (!text || !backendReady) return
+    if (credits === 0) { setError('No credits remaining.'); return }
+
+    setChatText('')
+    setTrans(text)
+    setStep(S.PLANNING)
+    setPlan(null); setExec([]); setError('')
+    addLog(`Text command: "${text}"`, 'info')
+
+    try {
+      addLog('Generating plan via Amazon Bedrock...', 'info')
+      const p = await plan(text)
+      setPlan(p)
+      addLog(`Plan: ${p.tasks?.length} step(s) — ${p.intent}`, 'success')
+
+      if (p.requires_approval) { setStep(S.APPROVING); addLog('Approval required', 'warning') }
+      else await runExec(p)
+    } catch (e) {
+      setError(e.message); setStep(S.ERROR); addLog('Error: ' + e.message, 'error')
+    }
+  }
 
   const isListening  = step === S.LISTENING
   const isBusy       = [S.PROCESSING, S.PLANNING, S.EXECUTING].includes(step)
@@ -137,6 +164,27 @@ export default function VoicePanel() {
             {step === S.DONE       && 'Done! Click to run another command.'}
             {step === S.ERROR      && 'Something went wrong.'}
           </p>
+        </div>
+
+        {/* ── Chat input (text command) ── */}
+        <div className="chat-input-section">
+          <form onSubmit={handleChatSubmit} className="chat-form">
+            <input
+              className="input chat-input"
+              type="text"
+              placeholder="Or type a command here..."
+              value={chatText}
+              onChange={e => setChatText(e.target.value)}
+              disabled={isBusy || isApproving}
+            />
+            <button
+              type="submit"
+              className="btn btn-primary chat-send-btn"
+              disabled={!chatText.trim() || isBusy || isApproving || !backendReady}
+            >
+              <Send size={13} /> Send
+            </button>
+          </form>
         </div>
 
         {/* ── Transcript ── */}

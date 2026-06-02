@@ -91,3 +91,28 @@
 .exec-step--pending { opacity: 0.45; }
 
 .mt-1 { margin-top: 0.25rem; }
+
+
+/* Chat input */
+.chat-input-section {
+  width: 100%;
+  max-width: 420px;
+}
+
+.chat-form {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.chat-input {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8rem;
+}
+
+.chat-send-btn {
+  padding: 0.5rem 0.85rem;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+}

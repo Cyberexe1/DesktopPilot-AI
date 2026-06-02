@@ -164,10 +164,7 @@ def enrich_prompt(user_command: str, user_id: str = "default") -> str:
         p = context["last_project"]
         lines.append(f"User's last project: {p.get('name')} at {p.get('path')}")
 
-    if context["recent_commands"]:
-        lines.append(f"Recent commands: {', '.join(context['recent_commands'])}")
-
     memory_block = "\n".join(lines)
     if memory_block:
-        return f"Context:\n{memory_block}\n\nCommand: {user_command}"
+        return f"Background context (for reference only — do NOT repeat previous commands):\n{memory_block}\n\nCurrent command (do ONLY this): {user_command}"
     return f"Command: {user_command}"

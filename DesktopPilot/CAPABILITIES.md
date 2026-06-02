@@ -408,6 +408,46 @@ You can also request a specific pause:
 
 ---
 
+## 💻 System Info Commands
+
+| Command Example | What It Returns |
+|---|---|
+| "How much battery do I have?" | Battery: 100% (Charging) |
+| "How much RAM is being used?" | RAM: 13.5 GB / 15.8 GB used (85%) |
+| "What's my CPU usage?" | CPU: 23% usage — Intel Core i7-... |
+| "What's my IP address?" | Local IP: 192.168.1.5, Public IP: 106.192.48.177 |
+| "How much disk space do I have?" | Disk C: 180 GB used / 476 GB total (296 GB free) |
+| "System info" | All of the above at once |
+| "Kill Chrome" | Kills all Chrome processes |
+| "Close all Notepad windows" | Kills all notepad.exe processes |
+
+### Process killing supports:
+Chrome, Notepad, Word, Excel, PowerPoint, VS Code, Spotify, Discord, Explorer, CMD, Terminal
+
+---
+
+## 🪟 Window Management
+
+| Command Example | What Happens |
+|---|---|
+| "Snap Chrome to the left half" | Chrome fills left 50% of screen |
+| "Snap VS Code to the right half" | VS Code fills right 50% |
+| "Maximize Chrome" | Chrome goes full screen |
+| "Minimize VS Code" | VS Code minimizes to taskbar |
+| "Snap Chrome to top-left" | Chrome fills top-left quarter |
+| "Close Notepad" | Closes the Notepad window |
+| "Close all Chrome windows" | Closes every Chrome window |
+| "Switch to VS Code" | Brings VS Code to focus |
+| "Minimize everything" | Shows desktop (Win+D) |
+| "List open windows" | Shows all currently open windows |
+
+### Snap positions supported:
+- `left` / `right` — half screen
+- `maximize` / `minimize`
+- `top-left` / `top-right` / `bottom-left` / `bottom-right` — quarter screen
+
+---
+
 ## 💬 WhatsApp Messaging
 
 | Command Example | What Happens |

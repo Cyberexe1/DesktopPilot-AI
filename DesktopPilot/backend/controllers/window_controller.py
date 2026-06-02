@@ -129,3 +129,110 @@ def ensure_app_focused(app_name: str, timeout: int = 5) -> str:
         return f"✓ Switched to {app_name}"
 
     return f"✗ Could not find {app_name} window"
+
+
+# ── Window Management ─────────────────────────────────────────────────────────
+
+def snap_window(app_name: str, position: str) -> str:
+    """
+    Snap a window to a position: left, right, maximize, minimize.
+    """
+    import pyautogui
+    import time
+
+    # First, find and focus the window
+    if not find_and_focus_window(app_name):
+        return f"Window '{app_name}' not found"
+
+    time.sleep(0.5)
+    pos = position.lower().strip()
+
+    if pos in ("left", "left half"):
+        pyautogui.hotkey('win', 'left')
+        return f"Snapped {app_name} to left half"
+    elif pos in ("right", "right half"):
+        pyautogui.hotkey('win', 'right')
+        return f"Snapped {app_name} to right half"
+    elif pos in ("maximize", "full", "fullscreen"):
+        pyautogui.hotkey('win', 'up')
+        return f"Maximized {app_name}"
+    elif pos in ("minimize", "min"):
+        pyautogui.hotkey('win', 'down')
+        return f"Minimized {app_name}"
+    elif pos in ("top left", "top-left"):
+        pyautogui.hotkey('win', 'left')
+        time.sleep(0.3)
+        pyautogui.hotkey('win', 'up')
+        return f"Snapped {app_name} to top-left"
+    elif pos in ("top right", "top-right"):
+        pyautogui.hotkey('win', 'right')
+        time.sleep(0.3)
+        pyautogui.hotkey('win', 'up')
+        return f"Snapped {app_name} to top-right"
+    elif pos in ("bottom left", "bottom-left"):
+        pyautogui.hotkey('win', 'left')
+        time.sleep(0.3)
+        pyautogui.hotkey('win', 'down')
+        return f"Snapped {app_name} to bottom-left"
+    elif pos in ("bottom right", "bottom-right"):
+        pyautogui.hotkey('win', 'right')
+        time.sleep(0.3)
+        pyautogui.hotkey('win', 'down')
+        return f"Snapped {app_name} to bottom-right"
+    else:
+        return f"Unknown position: {position}. Use: left, right, maximize, minimize"
+
+
+def close_window(app_name: str) -> str:
+    """Close a specific window."""
+    if find_and_focus_window(app_name):
+        import pyautogui
+        import time
+        time.sleep(0.3)
+        pyautogui.hotkey('alt', 'F4')
+        return f"Closed {app_name}"
+    return f"Window '{app_name}' not found"
+
+
+def close_all_windows(app_name: str) -> str:
+    """Close all windows of a specific app."""
+    try:
+        all_windows = gw.getAllWindows()
+        closed = 0
+        name_lower = app_name.lower()
+        for win in all_windows:
+            if win.title and name_lower in win.title.lower():
+                try:
+                    win.close()
+                    closed += 1
+                except Exception:
+                    pass
+        return f"Closed {closed} {app_name} window(s)" if closed > 0 else f"No {app_name} windows found"
+    except Exception as e:
+        return f"Failed to close {app_name} windows: {e}"
+
+
+def switch_to_window(app_name: str) -> str:
+    """Switch to (focus) a specific window."""
+    if find_and_focus_window(app_name):
+        return f"Switched to {app_name}"
+    return f"Window '{app_name}' not found"
+
+
+def minimize_all() -> str:
+    """Minimize all windows (show desktop)."""
+    import pyautogui
+    pyautogui.hotkey('win', 'd')
+    return "All windows minimized (desktop shown)"
+
+
+def list_open_windows() -> str:
+    """List all currently open windows."""
+    try:
+        all_windows = gw.getAllWindows()
+        visible = [w.title for w in all_windows if w.title and w.title.strip() and w.visible]
+        if visible:
+            return f"Open windows ({len(visible)}):\n" + "\n".join(f"• {t}" for t in visible[:15])
+        return "No visible windows"
+    except Exception as e:
+        return f"Failed to list windows: {e}"

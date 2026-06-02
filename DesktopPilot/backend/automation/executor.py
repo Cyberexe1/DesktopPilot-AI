@@ -21,9 +21,13 @@ from controllers.screen_reader_controller import read_screen, read_screen_region
 from controllers.form_filler_controller import fill_form, get_profile, update_profile
 from controllers.window_controller import (
     wait_for_window, is_correct_window_active,
-    ensure_app_focused, get_active_window_title
+    ensure_app_focused, get_active_window_title,
+    snap_window, close_window, close_all_windows,
+    switch_to_window, minimize_all, list_open_windows
 )
 from controllers.whatsapp_controller import send_whatsapp_message, open_whatsapp
+from controllers.code_controller import generate_and_run_code
+from controllers.system_controller import get_system_info, kill_process
 from database.sqlite_manager import find_project
 from ai.memory import update_last_project
 
@@ -201,6 +205,43 @@ async def execute_task(task: dict, user_id: str = "default", prev_tool: str = ""
 
     elif tool == "open_whatsapp":
         return await open_whatsapp()
+
+    elif tool == "generate_code":
+        description = task.get("description", task.get("text", ""))
+        language = task.get("language", "python")
+        filename = task.get("filename", "")
+        return await loop.run_in_executor(None, generate_and_run_code, description, language, filename)
+
+    elif tool == "system_info":
+        query = task.get("query", "all")
+        return await loop.run_in_executor(None, get_system_info, query)
+
+    elif tool == "kill_process":
+        name = task.get("name", "")
+        return await loop.run_in_executor(None, kill_process, name)
+
+    elif tool == "snap_window":
+        app = task.get("app", task.get("name", ""))
+        position = task.get("position", "maximize")
+        return await loop.run_in_executor(None, snap_window, app, position)
+
+    elif tool == "close_window":
+        app = task.get("app", task.get("name", ""))
+        return await loop.run_in_executor(None, close_window, app)
+
+    elif tool == "close_all_windows":
+        app = task.get("app", task.get("name", ""))
+        return await loop.run_in_executor(None, close_all_windows, app)
+
+    elif tool == "switch_window":
+        app = task.get("app", task.get("name", ""))
+        return await loop.run_in_executor(None, switch_to_window, app)
+
+    elif tool == "minimize_all":
+        return await loop.run_in_executor(None, minimize_all)
+
+    elif tool == "list_windows":
+        return await loop.run_in_executor(None, list_open_windows)
 
     else:
         return f"Unknown tool: {tool}"

@@ -114,17 +114,34 @@ Introduction to {topic}
 Write the full content now:"""
 
     elif content_type == "letter":
-        return f"""Write a formal letter about: {topic}
+        return f"""Write a formal professional email about: {topic}
 
 Requirements:
-- Proper greeting (Dear Sir/Madam or specific name if mentioned)
-- 3-4 paragraphs of body content
-- Each paragraph should be 3-4 sentences
-- Professional tone
-- Proper closing (Sincerely, Regards, etc.)
+- Start with "Dear Sir/Madam," on its own line
+- Leave a blank line after greeting
+- Write 2-3 body paragraphs (each 2-3 sentences)
+- Each paragraph MUST be separated by a blank line
+- End with a blank line then "Thank you for your understanding."
+- Then a blank line
+- Then "Best regards,"
+- Then the sender name on next line
+
+CRITICAL FORMAT RULE: Use double newlines between paragraphs. The email must have clear visual separation between greeting, body paragraphs, and closing. Never put "Best regards" or "Thank you" in the same paragraph as body text.
 {f'- Additional context: {extra}' if extra else ''}
 
-Write the letter now:"""
+Example format:
+Dear Sir/Madam,
+
+I am writing to inform you about [topic]. [2nd sentence]. [3rd sentence].
+
+[Second paragraph with more details]. [2nd sentence]. [3rd sentence].
+
+Thank you for your understanding and support.
+
+Best regards,
+[Name]
+
+Write the email now (follow the format exactly):"""
 
     elif content_type == "report":
         return f"""Write a detailed report about: {topic}

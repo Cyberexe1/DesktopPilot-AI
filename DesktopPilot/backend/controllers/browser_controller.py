@@ -39,69 +39,118 @@ async def search_web(query: str) -> str:
 
 async def open_gmail_compose(to: str = "", subject: str = "", body: str = "") -> str:
     """Open Gmail compose with pre-filled fields.
-    Uses URL method first. If fields aren't filled (common issue), 
-    falls back to keyboard automation after the compose window opens."""
+    Uses two-call approach for body content + keyboard automation."""
     import subprocess
     import time
+    import pyautogui
+    import pyperclip
 
+    # ── Step 1: Generate email body if empty/short ──
+    if not body or len(body) < 30:
+        try:
+            from ai.content_generator import generate_content
+            topic = subject if subject else f"email to {to}"
+            generated = generate_content(
+                topic=topic,
+                content_type="letter",
+                extra_instructions=f"To: {to}. Subject: {subject}. Write only the email body text."
+            )
+            if generated and len(generated) > 20:
+                body = generated.strip()
+                log.info(f"Email body generated: {len(body)} chars")
+        except Exception as e:
+            log.warning(f"Email content generation failed: {e}")
+            body = body or f"I am writing regarding {subject}.\n\nPlease let me know if you need any further information.\n\nThank you.\n\nBest regards"
+
+    if not subject:
+        subject = f"Email to {to}"
+
+    # Post-process body: ensure proper line breaks for email formatting
+    body = _format_email_body(body)
+
+    # ── Step 2: Open Gmail compose with URL params ──
+    # Use the compose URL format that Gmail reliably supports
+    # Format: https://mail.google.com/mail/?view=cm&fs=1&to=...&su=...&body=...
     params = urllib.parse.urlencode({
         "view": "cm",
+        "fs":   "1",       # Full screen compose
         "to":   to,
         "su":   subject,
         "body": body,
     })
     url = f"https://mail.google.com/mail/?{params}"
-
-    # Open the compose URL
     subprocess.Popen(["cmd", "/c", "start", "", url], shell=False)
 
-    # Wait for Gmail to load
-    time.sleep(5)
+    # Wait for Chrome/Gmail to fully load
+    log.info("Waiting for Gmail compose to load...")
+    time.sleep(8)
 
-    # Now use keyboard to fill fields as backup
-    # Gmail compose opens with cursor in "To" field
-    import pyautogui
-
+    # ── Step 3: Verify Chrome is in focus ──
     try:
-        # Fill To field (if not already filled by URL)
+        import pygetwindow as gw
+        # Find Chrome window and activate it
+        chrome_windows = [w for w in gw.getAllWindows() if 'chrome' in w.title.lower() or 'gmail' in w.title.lower()]
+        if chrome_windows:
+            win = chrome_windows[0]
+            if win.isMinimized:
+                win.restore()
+            win.activate()
+            time.sleep(1)
+            log.info(f"Focused: {win.title}")
+        else:
+            log.warning("Chrome/Gmail window not found — trying anyway")
+            time.sleep(2)
+    except Exception as e:
+        log.warning(f"Window focus failed: {e}")
+        time.sleep(2)
+
+    # ── Step 4: Fill fields — cursor is already in To field, just type ──
+    try:
+        import pygetwindow as gw
+
+        # Focus Chrome/Gmail window
+        chrome_wins = [w for w in gw.getAllWindows() 
+                       if any(k in w.title.lower() for k in ['chrome', 'gmail', 'mail', 'compose'])]
+        if chrome_wins:
+            chrome_wins[0].activate()
+            time.sleep(1)
+
+        # Cursor is already in "To" field when Gmail compose opens.
+        # Just type → Tab → type → Tab → type
+
+        # 1. Type email in To field (cursor already here)
         if to:
-            pyautogui.hotkey('ctrl', 'a')
-            time.sleep(0.2)
-            pyautogui.typewrite(to, interval=0.02) if to.isascii() else _clipboard_paste(to)
-            time.sleep(0.3)
+            pyperclip.copy(to)
+            pyautogui.hotkey('ctrl', 'v')
+            time.sleep(0.5)
 
-        # Tab to Subject
+        # 2. Tab → Subject
         pyautogui.press('tab')
-        time.sleep(0.3)
+        time.sleep(0.5)
 
-        # Fill Subject
+        # 3. Type Subject
         if subject:
-            pyautogui.hotkey('ctrl', 'a')
-            time.sleep(0.1)
-            _clipboard_paste(subject)
+            pyperclip.copy(subject)
+            pyautogui.hotkey('ctrl', 'v')
+            time.sleep(0.5)
+
+        # 4. Tab → Body
+        pyautogui.press('tab')
+        time.sleep(0.5)
+
+        # 5. Type Body
+        if body:
+            pyperclip.copy(body)
+            pyautogui.hotkey('ctrl', 'v')
             time.sleep(0.3)
 
-        # Tab to Body
-        pyautogui.press('tab')
-        time.sleep(0.3)
-
-        # Fill Body
-        if body:
-            _clipboard_paste(body)
-
+        log.info(f"Gmail filled — to: {to}, subject: {subject}, body: {len(body)} chars")
         return f"Gmail compose filled — to: {to}, subject: {subject}"
 
     except Exception as e:
-        log.warning(f"Gmail keyboard fill failed: {e}")
-        return f"Gmail compose opened (URL method) — to: {to}, subject: {subject}"
-
-
-def _clipboard_paste(text: str):
-    """Paste text via clipboard (handles unicode)."""
-    import pyperclip
-    import pyautogui
-    pyperclip.copy(text)
-    pyautogui.hotkey('ctrl', 'v')
+        log.warning(f"Gmail fill failed: {e}")
+        pyperclip.copy(body)
+        return f"Gmail opened. Body in clipboard — Ctrl+V to paste."
 
 
 # ── Playwright implementations ────────────────────────────────────────────────
@@ -187,3 +236,77 @@ def _subprocess_open(url: str) -> str:
         msg = f"Failed to open browser: {e}"
         log.error(msg)
         return msg
+
+
+def _format_email_body(body: str) -> str:
+    """
+    Force proper professional email formatting regardless of what the AI generated.
+    """
+    import re
+
+    # Remove any random incomplete sentences ("I am." at the end)
+    body = re.sub(r'\.\s*I am\.\s*', '. ', body)
+    body = re.sub(r'\s*I am\.\s*$', '', body)
+
+    # Fix "Best. regards" or "Best.\nregards" → "Best regards,"
+    body = re.sub(r'Best\.\s*regards', 'Best regards', body, flags=re.IGNORECASE)
+    body = re.sub(r'Best\s*regards\.', 'Best regards,', body, flags=re.IGNORECASE)
+    body = re.sub(r'Best regards[,.]?\s*', 'Best regards,\n', body, flags=re.IGNORECASE)
+
+    # Remove filler about contact info
+    body = re.sub(r'I am providing you with my contact information[^.]*\.?\s*', '', body)
+    body = re.sub(r'My email address is[^.]*\.?\s*', '', body)
+    body = re.sub(r'My phone number is[^.]*\.?\s*', '', body)
+    body = re.sub(r'you can reach me[^.]*\.?\s*', '', body)
+
+    # If no double newlines exist, add structure
+    if '\n\n' not in body:
+        # Split into sentences
+        sentences = re.split(r'(?<=[.!?])\s+', body.strip())
+        
+        if len(sentences) >= 4:
+            # Structure: greeting | para1 | para2 | closing
+            parts = []
+            
+            # Check if first sentence is a greeting
+            if sentences[0].lower().startswith('dear'):
+                parts.append(sentences[0])
+                sentences = sentences[1:]
+            
+            # Split remaining into 2 paragraphs
+            mid = len(sentences) // 2
+            
+            # Find where closing starts
+            closing_idx = len(sentences)
+            for i, s in enumerate(sentences):
+                s_lower = s.lower().strip()
+                if any(s_lower.startswith(c) for c in ['thank you', 'thanks', 'i appreciate', 'looking forward', 'i look forward', 'i would appreciate']):
+                    closing_idx = i
+                    break
+            
+            # Body paragraphs
+            body_sentences = sentences[:closing_idx]
+            closing_sentences = sentences[closing_idx:]
+            
+            if body_sentences:
+                mid = max(1, len(body_sentences) // 2)
+                parts.append(' '.join(body_sentences[:mid]))
+                if len(body_sentences) > mid:
+                    parts.append(' '.join(body_sentences[mid:]))
+            
+            # Closing
+            if closing_sentences:
+                parts.append(' '.join(closing_sentences))
+            
+            body = '\n\n'.join(parts)
+        else:
+            body = '\n\n'.join(sentences)
+
+    # Ensure "Best regards," is on its own line at the end
+    body = re.sub(r'\n*Best regards,\n*', '\n\nBest regards,\n', body, flags=re.IGNORECASE)
+
+    # Clean up multiple newlines
+    body = re.sub(r'\n{3,}', '\n\n', body)
+    body = body.strip()
+
+    return body

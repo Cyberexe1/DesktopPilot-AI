@@ -63,6 +63,7 @@ Rules:
 8. When asked to CREATE a file with content, use create_file. It auto-opens in the correct app (.txt→Notepad, .docx→Word, .pptx→PowerPoint, .html/.js/.py→VS Code).
 9. When asked to write to an EXISTING file, use write_to_file.
 10. When generating letter/email/document content, write DETAILED and COMPLETE text (at least 5-8 sentences). Include proper greeting, body paragraphs, and closing. Never write just one line.
+11. When generating PowerPoint content, write AT LEAST 5-7 bullet points per topic/section. Each slide should have a heading followed by 5+ detailed points. Make slides feel full (70%+ coverage), not empty with just 2 bullets. Structure content as: Heading1\npoint1\npoint2\npoint3\npoint4\npoint5\nHeading2\npoint1\npoint2...
 11. When asked to create a project (vite, next.js, node.js, python), use create_project with the correct framework name.
 12. For multi-step browser tasks, use wait between steps that depend on page loading (e.g., open_browser then wait then type_text).
 13. The system auto-waits between steps, but add explicit wait(seconds) if a step needs extra time (e.g., waiting for a heavy page to load).

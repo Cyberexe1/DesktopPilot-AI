@@ -115,11 +115,12 @@ def create_file(filename: str, content: str = "", directory: str = "") -> str:
         if ext == ".docx":
             _create_docx(filepath, content)
         elif ext == ".pptx":
-            _create_pptx(filepath, content)
+            # For presentations, enrich content if too sparse
+            enriched = _enrich_pptx_content(content, safe_name)
+            _create_pptx(filepath, enriched)
         elif ext == ".xlsx":
             _create_xlsx(filepath, content)
         else:
-            # Plain text files (txt, html, css, js, py, etc.)
             with open(filepath, 'w', encoding='utf-8') as f:
                 f.write(content)
 
@@ -243,10 +244,65 @@ def _create_docx(filepath: str, content: str):
     doc.save(filepath)
 
 
+def _enrich_pptx_content(content: str, filename: str) -> str:
+    """
+    If AI-generated content is too sparse, call Bedrock AGAIN
+    to generate detailed presentation content (plain text, not JSON).
+    """
+    lines = [l.strip() for l in content.split('\n') if l.strip()]
+
+    # If content is already rich (>20 lines with bullets), use as-is
+    bullet_count = sum(1 for l in lines if l.startswith('•'))
+    if bullet_count >= 15:
+        return content
+
+    # Extract topic from filename or content
+    topic = filename.replace('.pptx', '').replace('.', ' ').strip()
+    if lines:
+        topic = lines[0]  # First line is usually the topic
+
+    # Check for flowchart request
+    full_lower = content.lower()
+    has_flowchart = any(kw in full_lower for kw in ['flowchart', 'flow chart', 'diagram', 'process flow'])
+
+    # Determine number of slides from content or default to 4
+    num_slides = max(3, len([l for l in lines if len(l) < 50 and not l.startswith('•')]))
+    num_slides = min(num_slides, 8)  # Max 8 content sections (+ title + flowchart = 10 max)
+
+    # Extra instructions from original content
+    extra = ""
+    if has_flowchart:
+        extra += "Include a section listing process steps for a flowchart. "
+    if lines[1:]:
+        extra += f"Key points to cover: {', '.join(lines[1:5])}"
+
+    # ── SECOND BEDROCK CALL — generate rich content ──
+    from ai.content_generator import generate_content
+
+    log.info(f"Calling Bedrock again for presentation content: '{topic}'")
+    rich_content = generate_content(
+        topic=topic,
+        content_type="presentation",
+        num_slides=num_slides,
+        extra_instructions=extra,
+    )
+
+    # Append flowchart keyword if requested
+    if has_flowchart and "flowchart" not in rich_content.lower():
+        # Extract step-like lines for the flowchart
+        flowchart_lines = [l for l in lines if len(l) < 40 and not l.startswith('•')]
+        if len(flowchart_lines) > 2:
+            rich_content += "\nflowchart\n" + "\n".join(flowchart_lines[1:])
+        else:
+            rich_content += "\nflowchart\nData Collection\nProcessing\nAnalysis\nAction\nMonitoring"
+
+    return rich_content
+
+
 def _create_pptx(filepath: str, content: str):
-    """Create a proper .pptx PowerPoint presentation with slides and optional flowcharts."""
+    """Create a proper .pptx presentation — 70%+ slide coverage, rich content."""
     from pptx import Presentation
-    from pptx.util import Inches, Pt, Emu
+    from pptx.util import Inches, Pt
     from pptx.dml.color import RGBColor
     from pptx.enum.text import PP_ALIGN
 
@@ -256,55 +312,143 @@ def _create_pptx(filepath: str, content: str):
     if not lines:
         lines = ["Presentation created by DesktopPilot AI"]
 
-    # First slide — title
-    slide = prs.slides.add_slide(prs.slide_layouts[0])
-    slide.shapes.title.text = lines[0]
-    if len(lines) > 1:
-        slide.placeholders[1].text = lines[1]
-
-    # Check if content requests a flowchart
+    # Check for flowchart
     full_text = content.lower()
     has_flowchart = any(kw in full_text for kw in ['flowchart', 'flow chart', 'diagram', 'process flow', 'steps:'])
 
+    # Separate content from flowchart keywords
+    content_lines = []
+    for line in lines:
+        if line.lower() in ['flowchart', 'flow chart', 'diagram', 'process flow', 'steps:']:
+            continue
+        content_lines.append(line)
+
+    # ── Slide 1: Title slide ──
+    title = content_lines[0] if content_lines else "Untitled"
+    subtitle = content_lines[1] if len(content_lines) > 1 else "Created by DesktopPilot AI"
+
+    slide = prs.slides.add_slide(prs.slide_layouts[0])
+    slide.shapes.title.text = title
+    if slide.placeholders[1]:
+        slide.placeholders[1].text = subtitle
+
+    # ── Content slides — dense, 5-7 bullets per slide ──
+    remaining = content_lines[2:] if len(content_lines) > 2 else []
+
+    # Group lines: first line of each group is title, rest are bullets
+    # Strategy: every line that looks like a heading starts a new slide
+    slides_data = []
+    current_slide = {"title": "", "bullets": []}
+
+    for line in remaining:
+        # Detect if line is a heading (no bullet marker, shorter, capitalized)
+        is_heading = (
+            not line.startswith(('•', '-', '*', '·')) and
+            len(line) < 60 and
+            not line[0].islower() if line else False
+        )
+
+        if is_heading and current_slide["title"]:
+            # Save current slide and start new one
+            slides_data.append(current_slide)
+            current_slide = {"title": line, "bullets": []}
+        elif is_heading and not current_slide["title"]:
+            current_slide["title"] = line
+        else:
+            # It's a bullet point
+            bullet = line.lstrip('•-*· ')
+            if bullet:
+                current_slide["bullets"].append(bullet)
+
+    # Don't forget the last slide
+    if current_slide["title"] or current_slide["bullets"]:
+        slides_data.append(current_slide)
+
+    # If no structured slides found, split remaining into chunks of 5
+    if not slides_data and remaining:
+        for i in range(0, len(remaining), 5):
+            chunk = remaining[i:i+5]
+            slides_data.append({
+                "title": chunk[0],
+                "bullets": chunk[1:] if len(chunk) > 1 else ["Content for this section"]
+            })
+
+    # Create each content slide (cap at 8 content slides)
+    for sd in slides_data[:8]:
+        slide = prs.slides.add_slide(prs.slide_layouts[1])
+        slide.shapes.title.text = sd["title"] or "Content"
+
+        # Fill the body with bullets
+        body = slide.placeholders[1]
+        tf = body.text_frame
+        tf.clear()
+
+        for i, bullet in enumerate(sd["bullets"]):
+            if i == 0:
+                tf.text = bullet
+            else:
+                p = tf.add_paragraph()
+                p.text = bullet
+            # Style each paragraph
+            para = tf.paragraphs[i]
+            para.font.size = Pt(16)
+            para.space_after = Pt(8)
+
+    # ── Flowchart slide ──
     if has_flowchart:
-        # Create a flowchart slide
-        _add_flowchart_slide(prs, lines[2:] if len(lines) > 2 else ["Step 1", "Step 2", "Step 3"])
-    else:
-        # Regular content slides (group 4 lines per slide)
-        remaining = lines[2:] if len(lines) > 2 else []
-        for i in range(0, len(remaining), 4):
-            chunk = remaining[i:i+4]
-            slide = prs.slides.add_slide(prs.slide_layouts[1])
-            slide.shapes.title.text = chunk[0]
-            body = slide.placeholders[1]
-            body.text = '\n'.join(chunk[1:]) if len(chunk) > 1 else ""
+        steps = remaining if remaining else ["Step 1", "Step 2", "Step 3", "Step 4", "Step 5"]
+        # Use headings as flowchart steps if available
+        if slides_data:
+            steps = [sd["title"] for sd in slides_data if sd["title"]]
+        _add_flowchart_slide(prs, steps)
+
+    # Ensure minimum 3 content slides
+    while len(prs.slides) < 4:
+        slide = prs.slides.add_slide(prs.slide_layouts[1])
+        slide.shapes.title.text = f"Additional Details"
+        body = slide.placeholders[1]
+        body.text = "• More information can be added here\n• Supporting data and examples\n• References and resources"
+
+    # Hard limit: max 10 slides total
+    while len(prs.slides) > 10:
+        rId = prs.slides._sldIdLst[-1].rId
+        prs.part.drop_rel(rId)
+        del prs.slides._sldIdLst[-1]
 
     prs.save(filepath)
 
 
 def _add_flowchart_slide(prs, steps: list):
-    """Add a slide with a vertical flowchart (boxes + arrows)."""
-    from pptx.util import Inches, Pt, Emu
+    """Add a slide with a vertical flowchart that FITS within slide boundaries."""
+    from pptx.util import Inches, Pt
     from pptx.dml.color import RGBColor
     from pptx.enum.text import PP_ALIGN
     from pptx.enum.shapes import MSO_SHAPE
 
     slide = prs.slides.add_slide(prs.slide_layouts[5])  # Blank layout
 
-    # Add title
-    txBox = slide.shapes.add_textbox(Inches(0.5), Inches(0.3), Inches(9), Inches(0.6))
+    # Title
+    txBox = slide.shapes.add_textbox(Inches(0.5), Inches(0.2), Inches(9), Inches(0.5))
     tf = txBox.text_frame
     tf.text = "Process Flow"
-    tf.paragraphs[0].font.size = Pt(24)
+    tf.paragraphs[0].font.size = Pt(22)
     tf.paragraphs[0].font.bold = True
 
-    # Calculate positions for boxes
-    max_steps = min(len(steps), 6)  # Max 6 steps per slide
-    box_width = Inches(2.5)
-    box_height = Inches(0.7)
-    start_x = Inches(3.5)
-    start_y = Inches(1.2)
-    gap_y = Inches(1.1)
+    # Layout constants — designed to fit within standard 10x7.5 inch slide
+    max_steps = min(len(steps), 7)  # Max 7 steps to fit on one slide
+    box_width = Inches(3.0)
+    box_height = Inches(0.55)
+    arrow_height = Inches(0.25)
+
+    # Calculate total height needed and center vertically
+    total_height = (max_steps * box_height) + ((max_steps - 1) * arrow_height)
+    available_height = Inches(6.5)  # Slide height minus title and margins
+    start_y = Inches(0.9) + (available_height - total_height) / 2
+    start_x = (Inches(10) - box_width) / 2  # Center horizontally
+
+    # Clamp start_y to minimum
+    if start_y < Inches(0.8):
+        start_y = Inches(0.8)
 
     # Colors for boxes
     colors = [
@@ -314,13 +458,18 @@ def _add_flowchart_slide(prs, steps: list):
         RGBColor(0xF5, 0x9E, 0x0B),  # Orange
         RGBColor(0xEF, 0x44, 0x44),  # Red
         RGBColor(0x06, 0xB6, 0xD4),  # Cyan
+        RGBColor(0xEC, 0x48, 0x99),  # Pink
     ]
 
     for i in range(max_steps):
         step_text = steps[i] if i < len(steps) else f"Step {i+1}"
-        y = start_y + (gap_y * i)
+        y = start_y + (i * (box_height + arrow_height))
 
-        # Draw box
+        # Ensure we don't go off the slide (7.5 inches total height)
+        if y + box_height > Inches(7.2):
+            break
+
+        # Draw rounded rectangle box
         shape = slide.shapes.add_shape(
             MSO_SHAPE.ROUNDED_RECTANGLE,
             start_x, y, box_width, box_height
@@ -329,25 +478,28 @@ def _add_flowchart_slide(prs, steps: list):
         shape.fill.fore_color.rgb = colors[i % len(colors)]
         shape.line.color.rgb = colors[i % len(colors)]
 
-        # Add text to box
+        # Text inside box
         tf = shape.text_frame
+        tf.word_wrap = True
         tf.text = step_text
-        tf.paragraphs[0].font.size = Pt(12)
+        tf.paragraphs[0].font.size = Pt(11)
         tf.paragraphs[0].font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
         tf.paragraphs[0].font.bold = True
         tf.paragraphs[0].alignment = PP_ALIGN.CENTER
 
-        # Draw arrow to next box (except last)
+        # Arrow to next box (except last)
         if i < max_steps - 1:
             arrow_y = y + box_height
-            arrow_x = start_x + (box_width / 2) - Inches(0.05)
-            connector = slide.shapes.add_shape(
-                MSO_SHAPE.DOWN_ARROW,
-                arrow_x, arrow_y, Inches(0.3), Inches(0.35)
-            )
-            connector.fill.solid()
-            connector.fill.fore_color.rgb = RGBColor(0x64, 0x74, 0x8B)
-            connector.line.fill.background()
+            arrow_x = start_x + (box_width / 2) - Inches(0.12)
+            # Only add arrow if it fits
+            if arrow_y + arrow_height < Inches(7.2):
+                connector = slide.shapes.add_shape(
+                    MSO_SHAPE.DOWN_ARROW,
+                    arrow_x, arrow_y, Inches(0.24), arrow_height
+                )
+                connector.fill.solid()
+                connector.fill.fore_color.rgb = RGBColor(0x64, 0x74, 0x8B)
+                connector.line.fill.background()
 
 
 def _create_xlsx(filepath: str, content: str):

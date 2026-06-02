@@ -20,7 +20,9 @@ Everything the agent can do right now via voice commands.
 | "Open Spotify" | Opens Spotify |
 | "Open Discord" | Opens Discord |
 
-**Supported apps:** Chrome, VS Code, Notepad, Word, Excel, PowerPoint, Explorer, Calculator, Paint, CMD, PowerShell, Terminal, Spotify, Discord, Slack, Zoom
+**Supported apps:** Chrome, VS Code, Notepad, Word, Excel, PowerPoint, Explorer, Calculator, Paint, CMD, PowerShell, Terminal, Spotify, Discord, Slack, Zoom, WhatsApp, Telegram
+
+**Any app not in this list?** The agent uses **Windows Search** automatically — press Win key → type app name → Enter. Works for ANY installed application without configuration.
 
 ---
 
@@ -58,6 +60,18 @@ Everything the agent can do right now via voice commands.
 | "Open my latest resume" | Searches file index → opens most recent match |
 | "Find my DAA notes PDF" | Searches for "DAA" in indexed files |
 | "Open project.py" | Finds and opens with default app |
+| "Open my report" | If not in index → searches entire system using Windows Search |
+
+### File search strategy (4 levels)
+
+| Level | Where it searches | Speed |
+|---|---|---|
+| 1. SQLite index | Desktop, Documents, Downloads (396 files) | Instant |
+| 2. Windows Search Index | Everywhere Windows has indexed | 2-3 seconds |
+| 3. Quick filesystem scan | Desktop, Docs, Downloads, OneDrive, Pictures, Videos, D:\ | 3-5 seconds |
+| 4. UI fallback | Opens Windows Search for manual selection | Manual |
+
+If a file isn't found in the indexed folders, the agent automatically searches deeper — including OneDrive, Pictures, Videos, and other drives.
 
 ### Write Content to Files
 
@@ -394,6 +408,33 @@ You can also request a specific pause:
 
 ---
 
+## 💬 WhatsApp Messaging
+
+| Command Example | What Happens |
+|---|---|
+| "Send WhatsApp to Mom saying I'll be late" | Opens WhatsApp desktop → finds Mom → types message → sends |
+| "Send WhatsApp message to Dad saying happy birthday" | Same flow — finds contact by name, sends message |
+| "Open WhatsApp" | Just opens the WhatsApp desktop app |
+| "Send WhatsApp to 9876543210 saying hello" | Opens wa.me link with phone number |
+
+### How it works
+
+1. Opens WhatsApp desktop app (Microsoft Store version)
+2. Presses Ctrl+F (search)
+3. Types the contact name
+4. Waits for search results
+5. Presses Enter to select contact
+6. Pastes the message
+7. Presses Enter to send
+
+### First-time setup
+
+- WhatsApp must be installed and logged in on your PC
+- The desktop app (from Microsoft Store) is used — not WhatsApp Web
+- If contact can't be found by name, try using their phone number
+
+---
+
 ## ❌ What It CANNOT Do (Yet)
 
 | Limitation | Reason |
@@ -411,10 +452,78 @@ You can also request a specific pause:
 ## 🏗️ Architecture
 
 ```
-Voice Command → Amazon Transcribe → Llama 3.3 70B (Bedrock) → JSON Plan → Executor → Desktop Actions
-                                                                                    ↕
-                                                              Screen Reading ← Amazon Textract ← Screenshot
+Voice Command → Amazon Transcribe → Llama 3.3 70B (Bedrock) → JSON Plan
+                                                                   ↓
+                                                          ┌─────────────────┐
+                                                          │ POST-PROCESSOR  │
+                                                          │ (Intent Guard)  │
+                                                          │                 │
+                                                          │ Analyzes YOUR   │
+                                                          │ command vs AI   │
+                                                          │ plan. Strips    │
+                                                          │ hallucinated    │
+                                                          │ steps AI added  │
+                                                          │ that you didn't │
+                                                          │ ask for.        │
+                                                          └────────┬────────┘
+                                                                   ↓
+                                                          ┌─────────────────┐
+                                                          │ APPROVAL GATE   │
+                                                          │ Shows plan to   │
+                                                          │ user. Sensitive │
+                                                          │ actions need    │
+                                                          │ explicit OK.    │
+                                                          └────────┬────────┘
+                                                                   ↓
+                                                          ┌─────────────────┐
+                                                          │ EXECUTOR        │
+                                                          │ - Verifies      │
+                                                          │   correct window│
+                                                          │ - Auto-waits    │
+                                                          │ - Refuses if    │
+                                                          │   wrong app     │
+                                                          └────────┬────────┘
+                                                                   ↓
+                                                          Desktop Actions
+                                                                   ↕
+                                              Screen Reading ← Amazon Textract ← Screenshot
 ```
+
+### Pipeline stages
+
+| Stage | Technology | What it does |
+|---|---|---|
+| 1. Voice → Text | Amazon Transcribe | Converts speech to text |
+| 2. Text → Plan | Amazon Bedrock (Llama 3.3 70B) | Generates JSON execution plan |
+| 3. Intent Guard | Python post-processor | Validates plan against what user actually asked. Strips hallucinated steps |
+| 4. Approval Gate | Electron UI | Shows plan to user. Sensitive actions need explicit approval |
+| 5. Window Verification | pygetwindow | Checks correct app is in focus before typing |
+| 6. Executor | Python controllers | Runs each task with auto-waits between dependent steps |
+| 7. Screen Reading | Amazon Textract | OCR for reading what's on screen |
+
+### Intent Guard — how it works
+
+The post-processor checks your actual command against the AI-generated plan:
+
+| Your command | Intent detected | Action |
+|---|---|---|
+| "open Notepad" | Simple open (no write/create/send) | Strips to 1 step only |
+| "open Chrome" | Simple open | 1 step only |
+| "open Notepad and write a letter" | Open + write | Keeps all steps |
+| "create report.docx" | Create | Keeps create_file step |
+| "send WhatsApp to Mom" | Send | Keeps send_whatsapp step |
+| "search for Python tutorials" | Search | Keeps search steps |
+
+This prevents the AI from adding random typing/saving steps when you only asked to open something.
+
+### Window verification — prevents typing into wrong app
+
+Before typing (`type_text`, `press_key`), the executor:
+1. Checks what window is currently active
+2. If no window or wrong window → **refuses to type** and reports error
+3. If correct app is focused → proceeds to type
+
+This prevents the bug where Chrome fails to open but the agent types into whatever window is in front (like Notepad).
 
 All processing happens via:
 - **Amazon Transcribe** — speech to text
@@ -423,3 +532,4 @@ All processing happens via:
 - **Amazon DynamoDB** — memory + credits + command history
 - **Amazon S3** — audio file storage + screenshot storage
 - **Local Python controllers** — actual desktop execution (PyAutoGUI, subprocess, python-pptx, python-docx)
+- **Playwright** — advanced browser/WhatsApp automation

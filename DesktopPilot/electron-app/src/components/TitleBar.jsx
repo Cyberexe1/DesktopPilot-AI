@@ -25,7 +25,7 @@ export default function TitleBar() {
       <div className="titlebar-drag">
         <div className="titlebar-brand">
           <Cpu size={14} className="brand-icon" />
-          <span className="brand-name">Cipher</span>
+          <span className="brand-name">DesktopPilot</span>
           <span className="brand-tag">AI</span>
         </div>
 

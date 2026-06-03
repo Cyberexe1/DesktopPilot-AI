@@ -40,7 +40,7 @@ export default function Navbar() {
     <header className="nav-header">
       <nav className="nav-inner">
         <div className="nav-left">
-          <Link to="/" className="nav-brand">Cipher AI</Link>
+          <Link to="/" className="nav-brand">DesktopPilot AI</Link>
           <div className="nav-links">
             <Link to="/"          className={pathname === '/' ? 'nav-link nav-link-active' : 'nav-link'}>Home</Link>
             {isAuthenticated && (

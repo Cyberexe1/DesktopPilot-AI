@@ -136,8 +136,8 @@ export default function LandingPage() {
       <footer className="landing-footer">
         <div className="footer-inner">
           <div className="footer-brand">
-            <span className="footer-name">Cipher AI</span>
-            <p className="footer-copy">© 2025 Cipher AI. Engineered for performance.</p>
+            <span className="footer-name">DesktopPilot AI</span>
+            <p className="footer-copy">© 2025 DesktopPilot AI. Engineered for performance.</p>
           </div>
           <div className="footer-links">
             <a href="#">Terms</a>

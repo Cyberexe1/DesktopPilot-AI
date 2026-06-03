@@ -177,10 +177,10 @@ export default function VoicePanel() {
             disabled={isBusy || isApproving || isSpeaking}
           >
             {isBusy
-              ? <Loader size={36} className="spin" />
+              ? <Loader size={44} className="spin" />
               : isListening
-                ? <MicOff size={36} />
-                : <Mic size={36} />
+                ? <MicOff size={44} />
+                : <Mic size={44} />
             }
             {isListening && <span className="pulse-ring" />}
             {isListening && <span className="pulse-ring pulse-ring-2" />}

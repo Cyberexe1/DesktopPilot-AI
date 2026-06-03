@@ -398,6 +398,79 @@ async def set_full_profile(req: ProfileBulkRequest):
         err(str(e))
 
 
+# ── Auth ──────────────────────────────────────────────────────────────────────
+
+class SignupRequest(BaseModel):
+    name: str
+    email: str
+    password: str
+
+@app.post("/auth/signup")
+async def auth_signup(req: SignupRequest):
+    from controllers.auth_controller import signup
+    result = signup(req.name, req.email, req.password)
+    if result["success"]:
+        return ok(result)
+    else:
+        err(result["error"], 400)
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+@app.post("/auth/login")
+async def auth_login(req: LoginRequest):
+    from controllers.auth_controller import login
+    result = login(req.email, req.password)
+    if result["success"]:
+        return ok(result)
+    else:
+        err(result["error"], 401)
+
+
+# ── Buy Credits ───────────────────────────────────────────────────────────────
+
+class BuyCreditsRequest(BaseModel):
+    user_id: str
+    plan: str  # "starter", "pro", "team"
+
+@app.post("/credits/buy")
+async def buy_credits(req: BuyCreditsRequest):
+    """Add credits to user account based on plan purchased."""
+    PLANS = {
+        "starter": 500,
+        "pro":     2000,
+        "team":    10000,
+    }
+
+    amount = PLANS.get(req.plan.lower())
+    if not amount:
+        err(f"Unknown plan: {req.plan}. Use: starter, pro, team")
+
+    try:
+        from ai.memory import _get_dynamo
+        table = _get_dynamo().Table(os.getenv("DYNAMODB_TABLE_MEMORY", "DesktopPilotMemory"))
+
+        response = table.update_item(
+            Key={"user_id": req.user_id},
+            UpdateExpression="SET credits_remaining = if_not_exists(credits_remaining, :zero) + :amount",
+            ExpressionAttributeValues={":amount": amount, ":zero": 0},
+            ReturnValues="UPDATED_NEW",
+        )
+
+        new_balance = int(response["Attributes"]["credits_remaining"])
+        log.info(f"Credits purchased: {req.plan} (+{amount}) → balance: {new_balance}")
+
+        return ok({
+            "plan": req.plan,
+            "credits_added": amount,
+            "credits_remaining": new_balance,
+        })
+    except Exception as e:
+        log.error(f"Buy credits failed: {e}")
+        err(str(e))
+
+
 # ── Voice Response Generator ──────────────────────────────────────────────────
 
 def _generate_voice_response(results: list, intent: str) -> str:

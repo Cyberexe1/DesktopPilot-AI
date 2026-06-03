@@ -1,0 +1,118 @@
+.login-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background: var(--bg);
+}
+
+.login-panel-card {
+  width: 420px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 48px 36px;
+  text-align: center;
+}
+
+.login-panel-brand {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+
+.login-panel-sub {
+  font-size: 0.95rem;
+  color: var(--muted);
+  margin-bottom: 28px;
+}
+
+.lp-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px;
+  margin-bottom: 28px;
+}
+
+.lp-tab {
+  flex: 1;
+  padding: 10px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.lp-tab:hover { color: var(--text); }
+.lp-tab-active { background: var(--surface2); color: var(--accent); }
+
+.lp-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.lp-input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  font-size: 0.95rem;
+  color: var(--text);
+  font-family: inherit;
+  outline: none;
+  width: 100%;
+  transition: border-color 0.15s;
+}
+.lp-input:focus { border-color: var(--accent); }
+.lp-input::placeholder { color: var(--muted); }
+
+.lp-pw-wrap { position: relative; }
+.lp-pw-wrap .lp-input { padding-right: 40px; }
+.lp-pw-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.lp-error {
+  background: #7f1d1d20;
+  border: 1px solid #ef444440;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  color: var(--danger);
+}
+
+.lp-submit {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 14px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  margin-top: 4px;
+}
+.lp-submit:hover { opacity: 0.88; }
+.lp-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.lp-note {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.lp-note strong { color: var(--accent); }

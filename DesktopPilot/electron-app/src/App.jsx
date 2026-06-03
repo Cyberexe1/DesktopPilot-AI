@@ -7,6 +7,7 @@ import ProjectsPanel  from './panels/ProjectsPanel'
 import ActivityPanel  from './panels/ActivityPanel'
 import MemoryPanel    from './panels/MemoryPanel'
 import SettingsPanel  from './panels/SettingsPanel'
+import LoginPanel     from './panels/LoginPanel'
 import StatusBar      from './components/StatusBar'
 import { AgentProvider, useAgent } from './context/AgentContext'
 import './styles/app.css'
@@ -22,7 +23,6 @@ const PANELS = {
 
 function AppShell() {
   const [activePanel, setActivePanel] = useState('voice')
-  const { backendReady } = useAgent()
 
   return (
     <div className="app-shell">
@@ -39,8 +39,35 @@ function AppShell() {
 }
 
 export default function App() {
+  const [user, setUser]     = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const saved = localStorage.getItem('cipher_electron_user')
+    if (saved) {
+      try { setUser(JSON.parse(saved)) } catch {}
+    }
+    setLoading(false)
+  }, [])
+
+  const handleLogin = (userData) => {
+    setUser(userData)
+    localStorage.setItem('cipher_electron_user', JSON.stringify(userData))
+  }
+
+  const handleLogout = () => {
+    setUser(null)
+    localStorage.removeItem('cipher_electron_user')
+  }
+
+  if (loading) return null
+
+  if (!user) {
+    return <LoginPanel onLogin={handleLogin} />
+  }
+
   return (
-    <AgentProvider>
+    <AgentProvider user={user} onLogout={handleLogout}>
       <AppShell />
     </AgentProvider>
   )

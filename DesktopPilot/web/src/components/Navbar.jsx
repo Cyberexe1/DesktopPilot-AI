@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react'
-import { Link, useLocation } from 'react-router-dom'
-import { Cpu, Zap } from 'lucide-react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Zap, LogOut, User } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
 import './Navbar.css'
 
 export default function Navbar() {
   const { pathname }                        = useLocation()
+  const navigate                            = useNavigate()
+  const { user, isAuthenticated, logout }   = useAuth()
   const [agentConnected, setAgentConnected] = useState(false)
   const [credits,        setCredits]        = useState(null)
 
@@ -28,33 +31,52 @@ export default function Navbar() {
     return () => clearInterval(interval)
   }, [])
 
-  return (
-    <nav className="navbar">
-      <div className="navbar-inner container">
-        <Link to="/" className="navbar-brand">
-          <Cpu size={20} className="brand-icon" />
-          <span>DesktopPilot <span className="brand-ai">AI</span></span>
-        </Link>
+  const handleLogout = () => {
+    logout()
+    navigate('/')
+  }
 
-        <div className="navbar-links">
-          <Link to="/"          className={pathname === '/'          ? 'nav-link active' : 'nav-link'}>Home</Link>
-          <Link to="/dashboard" className={pathname === '/dashboard' ? 'nav-link active' : 'nav-link'}>Dashboard</Link>
-          <Link to="/docs"      className={pathname === '/docs'      ? 'nav-link active' : 'nav-link'}>Docs</Link>
+  return (
+    <header className="nav-header">
+      <nav className="nav-inner">
+        <div className="nav-left">
+          <Link to="/" className="nav-brand">Cipher AI</Link>
+          <div className="nav-links">
+            <Link to="/"          className={pathname === '/' ? 'nav-link nav-link-active' : 'nav-link'}>Home</Link>
+            {isAuthenticated && (
+              <Link to="/dashboard" className={pathname === '/dashboard' ? 'nav-link nav-link-active' : 'nav-link'}>Dashboard</Link>
+            )}
+            <Link to="/docs"      className={pathname === '/docs' ? 'nav-link nav-link-active' : 'nav-link'}>Docs</Link>
+          </div>
         </div>
 
-        <div className="navbar-status">
+        <div className="nav-right">
+          <div className={`agent-badge ${agentConnected ? 'agent-online' : 'agent-offline'}`}>
+            <span className="agent-dot-nav" />
+            <span className="agent-label">
+              {agentConnected ? 'Agent Connected' : 'Agent Offline'}
+            </span>
+          </div>
+
           {agentConnected && credits !== null && (
-            <div className="navbar-credits">
+            <div className="credits-badge-nav">
               <Zap size={12} />
-              <span className="text-sm">{credits}</span>
+              <span>{credits.toLocaleString()} CREDITS</span>
             </div>
           )}
-          <span className={`agent-dot ${agentConnected ? 'connected' : 'disconnected'}`} />
-          <span className="text-sm text-muted">
-            {agentConnected ? 'Agent Connected' : 'Agent Offline'}
-          </span>
+
+          {isAuthenticated ? (
+            <div className="user-section">
+              <span className="user-name">{user?.name?.split(' ')[0]}</span>
+              <button className="logout-btn" onClick={handleLogout} title="Sign out">
+                <LogOut size={14} />
+              </button>
+            </div>
+          ) : (
+            <Link to="/login" className="signin-btn">Sign In</Link>
+          )}
         </div>
-      </div>
-    </nav>
+      </nav>
+    </header>
   )
 }

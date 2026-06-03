@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Zap, CreditCard, Clock, Download, CheckCircle, Star, Wifi, WifiOff, RefreshCw } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
 import './Dashboard.css'
 
 const API = 'http://localhost:8000'
@@ -31,12 +32,14 @@ const MOCK_HISTORY = [
 ]
 
 export default function Dashboard() {
+  const { user } = useAuth()
   const [credits,    setCredits]    = useState(100)
   const [history,    setHistory]    = useState(MOCK_HISTORY)
   const [agentOnline,setAgentOnline]= useState(false)
   const [liveSteps,  setLiveSteps]  = useState([])
   const [activeTab,  setActiveTab]  = useState('overview')
   const [loading,    setLoading]    = useState(false)
+  const [buyMsg,     setBuyMsg]     = useState('')
   const wsRef = useRef(null)
 
   // ── Poll agent health ──────────────────────────────────────────────────
@@ -101,6 +104,28 @@ export default function Dashboard() {
       if (d.data?.commands?.length) setHistory(d.data.commands)
     } catch {}
     setLoading(false)
+  }
+
+  const handleBuyPlan = async (planName) => {
+    const userId = user?.user_id || 'default'
+    setBuyMsg('')
+    try {
+      const res = await fetch(`${API}/credits/buy`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId, plan: planName }),
+      })
+      const data = await res.json()
+      if (res.ok && data.data) {
+        setCredits(data.data.credits_remaining)
+        setBuyMsg(`✓ ${data.data.credits_added} credits added! Balance: ${data.data.credits_remaining}`)
+        setTimeout(() => setBuyMsg(''), 5000)
+      } else {
+        setBuyMsg('Failed to purchase credits')
+      }
+    } catch (e) {
+      setBuyMsg('Error: cannot connect to server')
+    }
   }
 
   const commandsToday = history.filter(h => {
@@ -206,6 +231,9 @@ export default function Dashboard() {
           </div>
 
           <h2 className="plans-title">Buy More Credits</h2>
+          {buyMsg && (
+            <div className="buy-success-msg">{buyMsg}</div>
+          )}
           <div className="plans-grid">
             {PLANS.map((plan, i) => (
               <div key={i} className={`card plan-card ${plan.badge ? 'plan-card--featured' : ''}`}>
@@ -227,7 +255,10 @@ export default function Dashboard() {
                     </li>
                   ))}
                 </ul>
-                <button className={`btn-plan ${plan.badge ? 'btn-plan--featured' : ''}`}>
+                <button
+                  className={`btn-plan ${plan.badge ? 'btn-plan--featured' : ''}`}
+                  onClick={() => handleBuyPlan(plan.name.toLowerCase())}
+                >
                   <CreditCard size={14} /> Get {plan.name}
                 </button>
               </div>

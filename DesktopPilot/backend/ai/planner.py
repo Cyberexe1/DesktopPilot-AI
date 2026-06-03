@@ -22,7 +22,7 @@ bedrock = boto3.client("bedrock-runtime", region_name=REGION)
 
 SENSITIVE_TOOLS = {"run_terminal", "compose_email", "delete_file", "open_setting", "type_text", "press_key", "create_file", "write_to_file", "create_project", "send_whatsapp", "generate_code"}
 
-SYSTEM_PROMPT = """You are DesktopPilot AI, an autonomous Windows desktop agent.
+SYSTEM_PROMPT = """You are Cipher AI, an autonomous Windows desktop agent. Your name is Cipher.
 
 Convert the user's natural language command into a structured JSON execution plan.
 
@@ -60,6 +60,25 @@ Available tools (use ONLY these exact names):
 - switch_window      params: app (string) — switch focus to an app
 - minimize_all       params: none — minimize all windows (show desktop)
 - list_windows       params: none — list all open windows
+- copy_screen        params: none — read screen text via OCR and copy to clipboard
+- get_clipboard      params: none — show current clipboard content
+- clipboard_history  params: none — show recent clipboard history
+- summarize_clipboard params: none — AI summarize what's in clipboard
+- take_screenshot    params: name (string, optional) — save screenshot to Desktop
+- open_recent_files  params: count (number, default 3) — open N most recent files
+- start_timer        params: seconds (number), message (string) — countdown timer with notification
+- get_timers         params: none — list active timers
+- speak              params: text (string) — speak text aloud through speakers
+- set_brightness     params: level (number 0-100) — set screen brightness
+- brightness_up      params: none — increase brightness
+- brightness_down    params: none — decrease brightness
+- volume_up          params: none — increase volume
+- volume_down        params: none — decrease volume
+- mute               params: none — toggle mute/unmute
+- set_volume         params: level (number 0-100) — set volume level
+- smart_reply        params: context (string, optional — e.g. "accept the invite"), tone (string: professional|casual|friendly)
+
+- speak              params: text (string) — speak text aloud using Amazon Polly
 
 Rules:
 1. Return ONLY valid JSON. No explanation, no markdown, no code blocks.
@@ -67,6 +86,13 @@ Rules:
 3. If the command is ambiguous, choose the most likely intent.
 4. Use wait_for_server after run_terminal when starting a web server.
 5. CRITICAL: Only include tools that the user EXPLICITLY asked for. Do NOT add extra steps. If user says "open Notepad" — return ONLY open_application. Do NOT add type_text or press_key unless the user asked to type something.
+6. For GREETINGS and CASUAL conversation (hello, hi, hey, how are you, good morning, thank you, bye), respond with speak tool containing a friendly reply. Examples:
+   - "Hello" → speak("Hello Sir, how may I help you today?")
+   - "Hi Cipher" → speak("Hello Sir! I'm Cipher, ready to assist you. What would you like me to do?")
+   - "Thank you" → speak("You're welcome, Sir! Let me know if you need anything else.")
+   - "Good morning" → speak("Good morning, Sir! How can I help you today?")
+   - "How are you" → speak("I'm doing great, Sir! Ready to help you with anything.")
+   - "Bye" → speak("Goodbye, Sir! Have a great day.")
 6. When asked to write/type something in an app, first open the app, then use type_text.
 7. Use press_key for keyboard shortcuts like saving (ctrl+s) or new line (enter).
 8. When asked to CREATE a file with content, use create_file. It auto-opens in the correct app (.txt→Notepad, .docx→Word, .pptx→PowerPoint, .html/.js/.py→VS Code).
@@ -188,8 +214,7 @@ def _needs_approval(plan: dict) -> bool:
 
 def _post_process_plan(plan: dict, user_command: str) -> dict:
     """
-    Fix Llama's over-eager behavior — strip hallucinated steps
-    that the user didn't ask for.
+    Fix Llama's over-eager behavior — strip hallucinated steps.
     """
     cmd = user_command.lower().strip()
     tasks = plan.get("tasks", [])
@@ -197,18 +222,35 @@ def _post_process_plan(plan: dict, user_command: str) -> dict:
     if not tasks:
         return plan
 
-    # Simple "open X" command — should be exactly 1 step
+    # ── Greetings: keep ONLY the speak task ──
+    greetings = ["hello", "hi ", "hey", "good morning", "good evening", "good night",
+                 "thank you", "thanks", "bye", "goodbye", "how are you", "what's up",
+                 "hi cipher", "hello cipher", "hi kajal", "hello kajal"]
+    is_greeting = any(cmd.startswith(g) or cmd == g.strip() for g in greetings)
+
+    if is_greeting:
+        speak_tasks = [t for t in tasks if t.get("tool") == "speak"]
+        if speak_tasks:
+            plan["tasks"] = [speak_tasks[0]]  # Keep only first speak
+            plan["intent"] = "greeting"
+            log.info("Post-process: greeting — kept only speak task")
+            return plan
+        else:
+            # AI didn't generate a speak task — add one
+            plan["tasks"] = [{"tool": "speak", "text": "Hello Sir! I'm Cipher. How may I help you today?"}]
+            plan["intent"] = "greeting"
+            return plan
+
+    # ── Simple "open X" command — keep only 1 step ──
     open_keywords = ["open ", "launch ", "start "]
     is_simple_open = any(cmd.startswith(kw) for kw in open_keywords)
 
-    # Check if user asked to write/type/create something
     has_write_intent = any(w in cmd for w in [
         "write", "type", "compose", "create", "draft",
         "send", "make", "save", "fill", "search"
     ])
 
     if is_simple_open and not has_write_intent:
-        # User just wants to open something — keep only the first open step
         open_tasks = [t for t in tasks if t.get("tool") in (
             "open_application", "open_browser", "open_setting",
             "open_project", "open_file", "open_whatsapp"
@@ -216,6 +258,6 @@ def _post_process_plan(plan: dict, user_command: str) -> dict:
         if open_tasks:
             plan["tasks"] = [open_tasks[0]]
             plan["intent"] = f"open {open_tasks[0].get('name', open_tasks[0].get('url', ''))}"
-            log.info(f"Post-process: stripped to 1 step (simple open command)")
+            log.info("Post-process: stripped to 1 step (simple open)")
 
     return plan

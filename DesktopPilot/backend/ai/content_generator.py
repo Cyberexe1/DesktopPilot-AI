@@ -156,6 +156,24 @@ Requirements:
 
 Write the report now:"""
 
+    elif content_type == "summary":
+        return f"""Summarize the following text in 2-3 concise bullet points:
+
+{topic[:1000]}
+
+{f'Instructions: {extra}' if extra else ''}
+
+Summary (bullet points only):"""
+
+    elif content_type == "reply":
+        return f"""Write a reply to the following message/email:
+
+{topic[:1000]}
+
+{f'Requirements: {extra}' if extra else 'Write a professional, concise reply (3-5 sentences).'}
+
+Reply:"""
+
     else:
         return f"""Write detailed content about: {topic}
 Requirements: Be thorough, specific, and informative. Write at least 300 words.

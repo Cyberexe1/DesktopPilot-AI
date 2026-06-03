@@ -163,6 +163,8 @@ async def plan(req: PlanRequest):
         return ok({"plan": plan_data, "credits_remaining": remaining})
     except Exception as e:
         log.error(f"Planning error: {e}")
+        from controllers.voice_output_controller import speak
+        speak(f"Sorry, I couldn't understand that command.")
         err(str(e))
 
 
@@ -229,6 +231,34 @@ async def execute(req: ExecuteRequest):
         })
 
         notify_done(success_count, len(results))
+
+        # Speak result via Amazon Polly — but NOT if plan already had a speak task
+        plan_has_speak = any(t.get("tool") == "speak" for t in tasks)
+        if not plan_has_speak:
+            from controllers.voice_output_controller import speak
+            if success_count == len(results):
+                # Context-aware success message
+                first_tool = results[0]["tool"] if results else ""
+                if first_tool == "open_application":
+                    speak(f"{results[0].get('message', 'Application opened')}.")
+                elif first_tool == "take_screenshot":
+                    speak("Screenshot saved to your desktop.")
+                elif first_tool == "generate_code":
+                    speak("Code generated and executed. Check VS Code for the file.")
+                elif first_tool == "system_info":
+                    speak(results[0].get("message", "Here's your system info."))
+                elif len(results) == 1:
+                    speak(f"Done. {results[0].get('message', 'Task completed')}.")
+                else:
+                    speak(f"Done. All {len(results)} steps completed.")
+            else:
+                # Speak the error
+                failed = [r for r in results if not r["success"]]
+                if failed:
+                    error_msg = failed[0]["message"][:80]
+                    speak(f"Sorry, something failed. {error_msg}")
+                else:
+                    speak(f"Completed {success_count} of {len(results)} steps.")
 
         return ok({"results": results})
     except Exception as e:

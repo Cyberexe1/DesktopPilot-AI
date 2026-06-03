@@ -23,7 +23,7 @@ export default function StatusBar() {
           v{agentStatus?.version || '1.0.0'}
         </span>
         <span className="statusbar-sep" />
-        <span className="text-xs text-muted">DesktopPilot AI</span>
+        <span className="text-xs text-muted">Cipher AI</span>
       </div>
     </div>
   )

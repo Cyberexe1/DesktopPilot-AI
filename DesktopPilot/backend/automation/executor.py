@@ -28,6 +28,16 @@ from controllers.window_controller import (
 from controllers.whatsapp_controller import send_whatsapp_message, open_whatsapp
 from controllers.code_controller import generate_and_run_code
 from controllers.system_controller import get_system_info, kill_process
+from controllers.utility_controller import (
+    copy_screen_text, get_clipboard, get_clipboard_history, summarize_clipboard,
+    copy_to_clipboard, take_screenshot, take_window_screenshot,
+    open_recent_files, start_timer, get_active_timers
+)
+from controllers.brightness_controller import (
+    set_brightness, get_brightness, brightness_up, brightness_down,
+    volume_up, volume_down, mute_toggle, set_volume
+)
+from controllers.smart_reply_controller import smart_reply, smart_reply_and_type
 from database.sqlite_manager import find_project
 from ai.memory import update_last_project
 
@@ -242,6 +252,67 @@ async def execute_task(task: dict, user_id: str = "default", prev_tool: str = ""
 
     elif tool == "list_windows":
         return await loop.run_in_executor(None, list_open_windows)
+
+    elif tool == "copy_screen":
+        return await loop.run_in_executor(None, copy_screen_text)
+
+    elif tool == "get_clipboard":
+        return await loop.run_in_executor(None, get_clipboard)
+
+    elif tool == "clipboard_history":
+        return await loop.run_in_executor(None, get_clipboard_history)
+
+    elif tool == "summarize_clipboard":
+        return await loop.run_in_executor(None, summarize_clipboard)
+
+    elif tool == "take_screenshot":
+        name = task.get("name", "")
+        return await loop.run_in_executor(None, take_screenshot, name)
+
+    elif tool == "open_recent_files":
+        count = int(task.get("count", 3))
+        return await loop.run_in_executor(None, open_recent_files, count)
+
+    elif tool == "start_timer":
+        seconds = int(task.get("seconds", 60))
+        message = task.get("message", "Timer done!")
+        return await loop.run_in_executor(None, start_timer, seconds, message)
+
+    elif tool == "get_timers":
+        return await loop.run_in_executor(None, get_active_timers)
+
+    elif tool == "speak":
+        text = task.get("text", "")
+        from controllers.voice_output_controller import speak
+        return await loop.run_in_executor(None, speak, text)
+
+    elif tool == "set_brightness":
+        level = int(task.get("level", 50))
+        return await loop.run_in_executor(None, set_brightness, level)
+
+    elif tool == "brightness_up":
+        return await loop.run_in_executor(None, brightness_up)
+
+    elif tool == "brightness_down":
+        return await loop.run_in_executor(None, brightness_down)
+
+    elif tool == "volume_up":
+        return await loop.run_in_executor(None, volume_up)
+
+    elif tool == "volume_down":
+        return await loop.run_in_executor(None, volume_down)
+
+    elif tool == "mute":
+        return await loop.run_in_executor(None, mute_toggle)
+
+    elif tool == "set_volume":
+        level = int(task.get("level", 50))
+        return await loop.run_in_executor(None, set_volume, level)
+
+    elif tool == "smart_reply":
+        context = task.get("context", task.get("instruction", ""))
+        tone = task.get("tone", "professional")
+        return await loop.run_in_executor(None, smart_reply_and_type, context, tone)
 
     else:
         return f"Unknown tool: {tool}"

@@ -5,7 +5,7 @@ import './VoicePanel.css'
 
 const S = { IDLE:'idle', LISTENING:'listening', PROCESSING:'processing',
             PLANNING:'planning', APPROVING:'approving', EXECUTING:'executing',
-            DONE:'done', ERROR:'error' }
+            DONE:'done', ERROR:'error', SPEAKING:'speaking' }
 
 const SENSITIVE = new Set(['run_terminal','compose_email','delete_file','open_setting'])
 
@@ -17,6 +17,7 @@ export default function VoicePanel() {
   const [execSteps, setExec]    = useState([])
   const [error, setError]       = useState('')
   const [chatText, setChatText] = useState('')
+  const [lastOutput, setLastOutput] = useState('')
   const mediaRef  = useRef(null)
   const chunksRef = useRef([])
 
@@ -81,13 +82,44 @@ export default function VoicePanel() {
         ))
         addLog(r.message, r.success ? 'success' : 'error')
       })
-      setStep(S.DONE); addLog('All steps completed ✓', 'success')
+      // Show output for code generation or system info
+      const outputResult = results.find(r =>
+        r.success && r.message && (
+          r.message.includes('Output:') ||
+          r.message.includes('Battery:') ||
+          r.message.includes('RAM:') ||
+          r.message.includes('IP:') ||
+          r.message.includes('CPU:') ||
+          r.message.includes('Disk') ||
+          r.message.includes('Open windows') ||
+          r.message.includes('Clipboard') ||
+          r.message.includes('Timer') ||
+          r.message.includes('Reply') ||
+          r.message.includes('Screen text') ||
+          r.tool === 'system_info' ||
+          r.tool === 'generate_code' ||
+          r.tool === 'get_clipboard' ||
+          r.tool === 'smart_reply'
+        )
+      )
+      if (outputResult) {
+        setLastOutput(outputResult.message)
+      }
+      // Show speaking animation briefly when agent responds with voice
+      const hasSpeakTask = p.tasks.some(t => t.tool === 'speak')
+      if (hasSpeakTask || results.length > 0) {
+        setStep(S.SPEAKING)
+        setTimeout(() => setStep(S.DONE), 3000) // Show speaking for 3s
+      } else {
+        setStep(S.DONE)
+      }
+      addLog('All steps completed ✓', 'success')
     } catch (e) {
       setStep(S.ERROR); setError(e.message); addLog('Execution failed: ' + e.message, 'error')
     }
   }
 
-  const reset = () => { setStep(S.IDLE); setTrans(''); setPlan(null); setExec([]); setError(''); setChatText('') }
+  const reset = () => { setStep(S.IDLE); setTrans(''); setPlan(null); setExec([]); setError(''); setChatText(''); setLastOutput('') }
 
   /* ── Chat input submit (text command instead of voice) ── */
   const handleChatSubmit = async (e) => {
@@ -118,6 +150,7 @@ export default function VoicePanel() {
   const isListening  = step === S.LISTENING
   const isBusy       = [S.PROCESSING, S.PLANNING, S.EXECUTING].includes(step)
   const isApproving  = step === S.APPROVING
+  const isSpeaking   = step === S.SPEAKING
 
   return (
     <div className="panel voice-panel">
@@ -140,9 +173,9 @@ export default function VoicePanel() {
         {/* ── Mic button ── */}
         <div className="mic-section">
           <button
-            className={`mic-btn ${isListening ? 'mic-listening' : ''} ${isBusy ? 'mic-busy' : ''} ${step === S.DONE ? 'mic-done' : ''} ${step === S.ERROR ? 'mic-error' : ''}`}
+            className={`mic-btn ${isListening ? 'mic-listening' : ''} ${isBusy ? 'mic-busy' : ''} ${step === S.DONE ? 'mic-done' : ''} ${step === S.ERROR ? 'mic-error' : ''} ${isSpeaking ? 'mic-speaking' : ''}`}
             onClick={isListening ? stopListening : startListening}
-            disabled={isBusy || isApproving}
+            disabled={isBusy || isApproving || isSpeaking}
           >
             {isBusy
               ? <Loader size={36} className="spin" />
@@ -152,6 +185,9 @@ export default function VoicePanel() {
             }
             {isListening && <span className="pulse-ring" />}
             {isListening && <span className="pulse-ring pulse-ring-2" />}
+            {isSpeaking && <span className="speak-ring" />}
+            {isSpeaking && <span className="speak-ring speak-ring-2" />}
+            {isSpeaking && <span className="speak-ring speak-ring-3" />}
           </button>
 
           <p className="mic-hint text-sm text-muted">
@@ -161,6 +197,7 @@ export default function VoicePanel() {
             {step === S.PLANNING   && 'Generating plan with Bedrock...'}
             {step === S.APPROVING  && 'Review the plan below'}
             {step === S.EXECUTING  && 'Executing on your desktop...'}
+            {step === S.SPEAKING   && '🔊 Cipher is speaking...'}
             {step === S.DONE       && 'Done! Click to run another command.'}
             {step === S.ERROR      && 'Something went wrong.'}
           </p>
@@ -185,6 +222,30 @@ export default function VoicePanel() {
               <Send size={13} /> Send
             </button>
           </form>
+        </div>
+
+        {/* ── Quick action buttons ── */}
+        <div className="quick-actions">
+          {[
+            { label: '📸 Screenshot', cmd: 'take a screenshot' },
+            { label: '💻 System Info', cmd: 'show system info' },
+            { label: '🔋 Battery', cmd: 'how much battery' },
+            { label: '⏰ Timer 5m', cmd: 'start a 5 minute timer' },
+            { label: '📋 Clipboard', cmd: 'what did I copy' },
+            { label: '💡 Brightness+', cmd: 'brightness up' },
+            { label: '🔊 Volume+', cmd: 'volume up' },
+            { label: '✉️ Smart Reply', cmd: 'smart reply to this email' },
+          ].map((action, i) => (
+            <button
+              key={i}
+              className="quick-btn"
+              onClick={() => { setChatText(action.cmd); }}
+              disabled={isBusy}
+              title={action.cmd}
+            >
+              {action.label}
+            </button>
+          ))}
         </div>
 
         {/* ── Transcript ── */}
@@ -257,6 +318,14 @@ export default function VoicePanel() {
           <div className="card plan-meta">
             <p className="section-label">Intent</p>
             <p className="text-sm text-muted selectable">{planData.intent}</p>
+          </div>
+        )}
+
+        {/* ── Output display (code output, system info, etc.) ── */}
+        {lastOutput && (
+          <div className="card output-card">
+            <p className="section-label">Output</p>
+            <pre className="output-text selectable">{lastOutput}</pre>
           </div>
         )}
       </div>

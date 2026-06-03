@@ -25,7 +25,7 @@ export default function VoicePanel() {
   const startListening = async () => {
     if (!backendReady) { setError('Backend not ready yet. Please wait.'); return }
     if (credits === 0) { setError('No credits remaining. Buy more at desktoppilot.vercel.app/dashboard'); return }
-    setStep(S.LISTENING); setTrans(''); setPlan(null); setExec([]); setError('')
+    setStep(S.LISTENING); setTrans(''); setPlan(null); setExec([]); setError(''); setLastOutput('')
     addLog('Microphone activated', 'info')
     try {
       const stream   = await navigator.mediaDevices.getUserMedia({ audio: true })
@@ -82,24 +82,23 @@ export default function VoicePanel() {
         ))
         addLog(r.message, r.success ? 'success' : 'error')
       })
-      // Show output for code generation or system info
+      // Show output for commands that produce text results
       const outputResult = results.find(r =>
-        r.success && r.message && (
+        r.success && r.message && r.message.length > 30 && (
           r.message.includes('Output:') ||
           r.message.includes('Battery:') ||
           r.message.includes('RAM:') ||
-          r.message.includes('IP:') ||
+          r.message.includes('Local IP:') ||
           r.message.includes('CPU:') ||
           r.message.includes('Disk') ||
           r.message.includes('Open windows') ||
-          r.message.includes('Clipboard') ||
-          r.message.includes('Timer') ||
+          r.message.includes('Clipboard:') ||
+          r.message.includes('Timer started:') ||
           r.message.includes('Reply') ||
           r.message.includes('Screen text') ||
-          r.tool === 'system_info' ||
-          r.tool === 'generate_code' ||
-          r.tool === 'get_clipboard' ||
-          r.tool === 'smart_reply'
+          r.message.includes('Profile:') ||
+          r.message.includes('Copied') ||
+          r.message.includes('Code saved')
         )
       )
       if (outputResult) {
@@ -131,7 +130,7 @@ export default function VoicePanel() {
     setChatText('')
     setTrans(text)
     setStep(S.PLANNING)
-    setPlan(null); setExec([]); setError('')
+    setPlan(null); setExec([]); setError(''); setLastOutput('')
     addLog(`Text command: "${text}"`, 'info')
 
     try {

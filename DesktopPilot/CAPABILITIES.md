@@ -569,6 +569,7 @@ All processing happens via:
 - **Amazon Transcribe** — speech to text
 - **Amazon Bedrock (Llama 3.3 70B)** — intent detection + plan generation
 - **Amazon Textract** — screen reading / OCR (captures screen → extracts all text)
+- **Windows SAPI** — text-to-speech (agent speaks results aloud, no AWS needed)
 - **Amazon DynamoDB** — memory + credits + command history
 - **Amazon S3** — audio file storage + screenshot storage
 - **Local Python controllers** — actual desktop execution (PyAutoGUI, subprocess, python-pptx, python-docx)

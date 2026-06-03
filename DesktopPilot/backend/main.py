@@ -232,33 +232,20 @@ async def execute(req: ExecuteRequest):
 
         notify_done(success_count, len(results))
 
-        # Speak result via Amazon Polly — but NOT if plan already had a speak task
+        # Speak result — natural, human-like responses
         plan_has_speak = any(t.get("tool") == "speak" for t in tasks)
         if not plan_has_speak:
             from controllers.voice_output_controller import speak
-            if success_count == len(results):
-                # Context-aware success message
-                first_tool = results[0]["tool"] if results else ""
-                if first_tool == "open_application":
-                    speak(f"{results[0].get('message', 'Application opened')}.")
-                elif first_tool == "take_screenshot":
-                    speak("Screenshot saved to your desktop.")
-                elif first_tool == "generate_code":
-                    speak("Code generated and executed. Check VS Code for the file.")
-                elif first_tool == "system_info":
-                    speak(results[0].get("message", "Here's your system info."))
-                elif len(results) == 1:
-                    speak(f"Done. {results[0].get('message', 'Task completed')}.")
-                else:
-                    speak(f"Done. All {len(results)} steps completed.")
-            else:
-                # Speak the error
+            if success_count == len(results) and results:
+                # Generate natural response based on what was done
+                speech = _generate_voice_response(results, intent)
+                speak(speech)
+            elif success_count < len(results):
                 failed = [r for r in results if not r["success"]]
                 if failed:
-                    error_msg = failed[0]["message"][:80]
-                    speak(f"Sorry, something failed. {error_msg}")
+                    speak(f"Sorry Sir, I ran into a problem. {failed[0]['message'][:60]}")
                 else:
-                    speak(f"Completed {success_count} of {len(results)} steps.")
+                    speak("I completed some steps but a few didn't work. Please check.")
 
         return ok({"results": results})
     except Exception as e:
@@ -409,3 +396,111 @@ async def set_full_profile(req: ProfileBulkRequest):
         return ok({"message": result})
     except Exception as e:
         err(str(e))
+
+
+# ── Voice Response Generator ──────────────────────────────────────────────────
+
+def _generate_voice_response(results: list, intent: str) -> str:
+    """Generate natural, human-like voice response based on what was executed."""
+    if not results:
+        return "Done, Sir."
+
+    first = results[0]
+    tool = first.get("tool", "")
+    msg = first.get("message", "")
+
+    # Single-step responses
+    if len(results) == 1:
+        if tool == "open_application":
+            app_name = msg.replace("Opened ", "").replace(" via Windows Search", "")
+            return f"{app_name} is now open for you, Sir."
+
+        elif tool == "open_browser":
+            return "I've opened that in your browser, Sir."
+
+        elif tool == "open_setting":
+            return "Settings panel is open, Sir."
+
+        elif tool == "open_project":
+            return "Your project is open in VS Code, Sir."
+
+        elif tool == "open_file":
+            return "I've opened that file for you, Sir."
+
+        elif tool == "take_screenshot":
+            return "Screenshot taken and saved to your desktop, Sir."
+
+        elif tool == "system_info":
+            # Speak the actual info
+            short = msg[:100] if len(msg) < 100 else msg.split('\n')[0]
+            return short
+
+        elif tool == "generate_code":
+            return "Your code has been generated and executed. Check VS Code for the file, Sir."
+
+        elif tool == "create_file":
+            return "File created and opened for you, Sir."
+
+        elif tool == "create_project":
+            return "Project scaffolded and opened in VS Code, Sir."
+
+        elif tool == "compose_email":
+            return "Gmail compose is open with your email filled in, Sir."
+
+        elif tool == "send_whatsapp":
+            return "WhatsApp message sent, Sir."
+
+        elif tool == "smart_reply":
+            return "I've typed a reply for you, Sir."
+
+        elif tool == "brightness_up" or tool == "brightness_down":
+            return "Brightness adjusted, Sir."
+
+        elif tool == "volume_up" or tool == "volume_down":
+            return "Volume adjusted, Sir."
+
+        elif tool == "mute":
+            return "Mute toggled, Sir."
+
+        elif tool == "kill_process":
+            return f"Done. {msg}"
+
+        elif tool == "snap_window":
+            return "Window snapped, Sir."
+
+        elif tool == "minimize_all":
+            return "All windows minimized, Sir."
+
+        elif tool == "start_timer":
+            return msg
+
+        elif tool == "copy_screen":
+            return "Screen text copied to your clipboard, Sir."
+
+        elif tool == "fill_form":
+            return "Form filled with your details, Sir."
+
+        elif tool == "run_terminal":
+            return "Command is running in the terminal, Sir."
+
+        else:
+            return "Done, Sir."
+
+    # Multi-step responses
+    else:
+        tools_used = set(r["tool"] for r in results)
+
+        if "open_application" in tools_used and "type_text" in tools_used:
+            return "I've opened the app and typed everything for you, Sir."
+
+        elif "open_project" in tools_used and "run_terminal" in tools_used:
+            return "Your project is open and the server is starting, Sir."
+
+        elif "create_file" in tools_used:
+            return "File created with all the content, Sir."
+
+        elif "compose_email" in tools_used:
+            return "Your email is composed and ready to send, Sir."
+
+        else:
+            return f"All {len(results)} steps completed, Sir."

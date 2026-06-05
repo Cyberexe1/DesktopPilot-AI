@@ -42,7 +42,7 @@ export default function ProjectsPanel() {
 
   const openInVSCode = async (name) => {
     try {
-      await fetch('http://localhost:8000/execute', {
+      await fetch('http://localhost:8888/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ plan: { tasks: [{ tool: 'open_project', project: name }] } }),
@@ -54,7 +54,7 @@ export default function ProjectsPanel() {
   const launchProject = async (project) => {
     if (!project.start_command) { addLog('No start command configured', 'warning'); return }
     try {
-      await fetch('http://localhost:8000/execute', {
+      await fetch('http://localhost:8888/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

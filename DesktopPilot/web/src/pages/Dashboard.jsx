@@ -3,7 +3,7 @@ import { Zap, CreditCard, Clock, Download, CheckCircle, Star, Wifi, WifiOff, Ref
 import { useAuth } from '../context/AuthContext'
 import './Dashboard.css'
 
-const API = 'http://localhost:8000'
+const API = 'http://localhost:8888'
 
 const PLANS = [
   {
@@ -71,7 +71,7 @@ export default function Dashboard() {
     let ws
     const connect = () => {
       try {
-        ws = new WebSocket('ws://localhost:8000/ws')
+        ws = new WebSocket('ws://localhost:8888/ws')
         wsRef.current = ws
         ws.onmessage = (e) => {
           try {

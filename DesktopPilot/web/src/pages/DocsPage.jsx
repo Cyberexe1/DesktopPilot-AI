@@ -15,7 +15,7 @@ const sections = [
     title: '2. Connect the Dashboard',
     content: [
       'Open the web dashboard at desktoppilot.vercel.app/dashboard.',
-      'The dashboard connects to your local agent via WebSocket on port 8000.',
+      'The dashboard connects to your local agent via WebSocket on port 8888.',
       'A green "Agent Connected" indicator confirms the connection.',
       'If disconnected, ensure the desktop agent is running.',
     ]

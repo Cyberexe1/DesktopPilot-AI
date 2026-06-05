@@ -27,6 +27,7 @@ from controllers.window_controller import (
 )
 from controllers.whatsapp_controller import send_whatsapp_message, open_whatsapp
 from controllers.code_controller import generate_and_run_code
+from controllers.knowledge_controller import answer_question
 from controllers.system_controller import get_system_info, kill_process
 from controllers.utility_controller import (
     copy_screen_text, get_clipboard, get_clipboard_history, summarize_clipboard,
@@ -38,6 +39,19 @@ from controllers.brightness_controller import (
     volume_up, volume_down, mute_toggle, set_volume
 )
 from controllers.smart_reply_controller import smart_reply, smart_reply_and_type
+from controllers.file_ops_controller import (
+    copy_file, copy_files_by_extension, move_file, move_files_by_extension,
+    rename_file, delete_file as delete_file_op, delete_files_by_pattern,
+    create_folder, create_folder_structure, zip_folder, unzip_file,
+    list_large_files, find_duplicates, cleanup_desktop
+)
+from controllers.system_maintenance_controller import (
+    clear_recycle_bin, check_windows_updates, show_installed_programs,
+    open_disk_cleanup, open_device_manager, check_network_speed,
+    flush_dns, show_environment_variables, open_services, check_ports_in_use,
+    get_startup_programs, get_disk_usage, get_wifi_info,
+    shutdown_computer, cancel_shutdown, restart_computer
+)
 from database.sqlite_manager import find_project
 from ai.memory import update_last_project
 
@@ -286,6 +300,30 @@ async def execute_task(task: dict, user_id: str = "default", prev_tool: str = ""
         from controllers.voice_output_controller import speak
         return await loop.run_in_executor(None, speak, text)
 
+    elif tool == "answer_question":
+        question = task.get("question", task.get("text", ""))
+        # Get the answer from AI
+        ai_answer = await loop.run_in_executor(None, answer_question, question)
+
+        # If AI can't answer (real-time data), fall back to web search
+        cant_answer = any(phrase in ai_answer.lower() for phrase in [
+            "i'm not able to", "i cannot", "i don't have", "real-time",
+            "i can't provide", "unable to", "don't have access",
+            "not able to provide", "i can't access"
+        ])
+
+        if cant_answer:
+            # Fall back to web search
+            log.info("AI can't answer — falling back to web search")
+            from controllers.voice_output_controller import speak
+            speak("Let me search that for you, Sir.")
+            return await search_web(question)
+        else:
+            # Speak the answer
+            from controllers.voice_output_controller import speak
+            speak(ai_answer)
+            return ai_answer
+
     elif tool == "set_brightness":
         level = int(task.get("level", 50))
         return await loop.run_in_executor(None, set_brightness, level)
@@ -313,6 +351,126 @@ async def execute_task(task: dict, user_id: str = "default", prev_tool: str = ""
         context = task.get("context", task.get("instruction", ""))
         tone = task.get("tone", "professional")
         return await loop.run_in_executor(None, smart_reply_and_type, context, tone)
+
+    # ── File Operations ───────────────────────────────────────────────────
+    elif tool == "copy_file":
+        source = task.get("source", task.get("from", ""))
+        destination = task.get("destination", task.get("to", ""))
+        return await loop.run_in_executor(None, copy_file, source, destination)
+
+    elif tool == "copy_files_by_type":
+        ext = task.get("extension", task.get("type", ""))
+        src = task.get("source", task.get("from", ""))
+        dst = task.get("destination", task.get("to", ""))
+        return await loop.run_in_executor(None, copy_files_by_extension, ext, src, dst)
+
+    elif tool == "move_file":
+        source = task.get("source", task.get("from", ""))
+        destination = task.get("destination", task.get("to", ""))
+        return await loop.run_in_executor(None, move_file, source, destination)
+
+    elif tool == "move_files_by_type":
+        ext = task.get("extension", task.get("type", ""))
+        src = task.get("source", task.get("from", ""))
+        dst = task.get("destination", task.get("to", ""))
+        return await loop.run_in_executor(None, move_files_by_extension, ext, src, dst)
+
+    elif tool == "rename_file":
+        source = task.get("source", task.get("file", ""))
+        new_name = task.get("new_name", task.get("name", ""))
+        return await loop.run_in_executor(None, rename_file, source, new_name)
+
+    elif tool == "delete_file":
+        path = task.get("path", task.get("file", ""))
+        return await loop.run_in_executor(None, delete_file_op, path)
+
+    elif tool == "delete_by_pattern":
+        pattern = task.get("pattern", "*.tmp")
+        directory = task.get("directory", "")
+        return await loop.run_in_executor(None, delete_files_by_pattern, pattern, directory)
+
+    elif tool == "create_folder":
+        name = task.get("name", "")
+        directory = task.get("directory", "")
+        return await loop.run_in_executor(None, create_folder, name, directory)
+
+    elif tool == "create_folder_structure":
+        folders = task.get("folders", [])
+        base_dir = task.get("directory", "")
+        return await loop.run_in_executor(None, create_folder_structure, folders, base_dir)
+
+    elif tool == "zip_folder":
+        source = task.get("source", task.get("path", ""))
+        output = task.get("output", "")
+        return await loop.run_in_executor(None, zip_folder, source, output)
+
+    elif tool == "unzip_file":
+        source = task.get("source", task.get("path", ""))
+        destination = task.get("destination", "")
+        return await loop.run_in_executor(None, unzip_file, source, destination)
+
+    elif tool == "list_large_files":
+        directory = task.get("directory", "")
+        min_size = int(task.get("min_size_mb", 100))
+        return await loop.run_in_executor(None, list_large_files, directory, min_size)
+
+    elif tool == "find_duplicates":
+        directory = task.get("directory", "")
+        return await loop.run_in_executor(None, find_duplicates, directory)
+
+    elif tool == "cleanup_desktop":
+        return await loop.run_in_executor(None, cleanup_desktop)
+
+    # ── System Maintenance ────────────────────────────────────────────────
+    elif tool == "clear_recycle_bin":
+        return await loop.run_in_executor(None, clear_recycle_bin)
+
+    elif tool == "check_updates":
+        return await loop.run_in_executor(None, check_windows_updates)
+
+    elif tool == "show_installed_programs":
+        return await loop.run_in_executor(None, show_installed_programs)
+
+    elif tool == "open_disk_cleanup":
+        return await loop.run_in_executor(None, open_disk_cleanup)
+
+    elif tool == "open_device_manager":
+        return await loop.run_in_executor(None, open_device_manager)
+
+    elif tool == "check_network_speed":
+        return await loop.run_in_executor(None, check_network_speed)
+
+    elif tool == "flush_dns":
+        return await loop.run_in_executor(None, flush_dns)
+
+    elif tool == "show_env_variables":
+        return await loop.run_in_executor(None, show_environment_variables)
+
+    elif tool == "open_services":
+        return await loop.run_in_executor(None, open_services)
+
+    elif tool == "check_ports":
+        return await loop.run_in_executor(None, check_ports_in_use)
+
+    elif tool == "get_startup_programs":
+        return await loop.run_in_executor(None, get_startup_programs)
+
+    elif tool == "get_disk_usage":
+        return await loop.run_in_executor(None, get_disk_usage)
+
+    elif tool == "get_wifi_info":
+        return await loop.run_in_executor(None, get_wifi_info)
+
+    elif tool == "shutdown":
+        delay = int(task.get("delay", 300))
+        return await loop.run_in_executor(None, shutdown_computer, delay)
+
+    elif tool == "cancel_shutdown":
+        return await loop.run_in_executor(None, cancel_shutdown)
+
+    elif tool == "restart":
+        delay = int(task.get("delay", 60))
+        return await loop.run_in_executor(None, restart_computer, delay)
 
     else:
         return f"Unknown tool: {tool}"

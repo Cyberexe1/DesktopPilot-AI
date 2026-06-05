@@ -77,7 +77,7 @@ Setup guide with sidebar navigation:
 ### Navbar
 - Logo: "Cipher AI" (was DesktopPilot)
 - Navigation: Home | Dashboard | Docs
-- **Agent connection indicator** — green dot + "Agent Connected" (pings `localhost:8000/health` every 10s)
+- **Agent connection indicator** — green dot + "Agent Connected" (pings `localhost:8888/health` every 10s)
 - **Credits badge** — shows current balance when agent is online
 
 ---
@@ -85,7 +85,7 @@ Setup guide with sidebar navigation:
 ## Real-Time Features
 
 ### WebSocket Connection
-- Connects to `ws://localhost:8000/ws`
+- Connects to `ws://localhost:8888/ws`
 - Receives live events:
   - `execution_start` — shows live feed card
   - `step_update` — updates each step status (pending → done/failed)
@@ -116,7 +116,7 @@ Setup guide with sidebar navigation:
 
 ```env
 # web/.env
-VITE_API_URL=http://localhost:8000
+VITE_API_URL=http://localhost:8888
 VITE_DOWNLOAD_URL=https://your-s3-bucket.s3.amazonaws.com/CipherAI-Setup.exe
 ```
 

@@ -34,7 +34,7 @@ export default function SettingsPanel() {
   const testBackend = async () => {
     setTesting(true); setTestResult(null)
     try {
-      const res = await fetch('http://localhost:8000/health', { signal: AbortSignal.timeout(3000) })
+      const res = await fetch('http://localhost:8888/health', { signal: AbortSignal.timeout(3000) })
       const data = await res.json()
       setTestResult({ ok: true, msg: `Backend OK — ${data.agent}` })
     } catch (e) {
@@ -66,7 +66,7 @@ export default function SettingsPanel() {
           <div className="backend-status">
             <div className={`status-row ${backendReady ? 'status-ok' : 'status-warn'}`}>
               <span className="status-dot-sm" />
-              <span className="text-sm">FastAPI — {backendReady ? 'Running on :8000' : 'Starting...'}</span>
+              <span className="text-sm">FastAPI — {backendReady ? 'Running on :8888' : 'Starting...'}</span>
             </div>
             <div className={`status-row ${wsConnected ? 'status-ok' : 'status-warn'}`}>
               <span className="status-dot-sm" />

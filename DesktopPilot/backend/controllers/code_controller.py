@@ -149,6 +149,17 @@ Return ONLY runnable code. No explanations. No markdown. No ```. Maximum 25 line
 
         if "meta" in MODEL_ID.lower() or "llama" in MODEL_ID.lower():
             body = {"prompt": prompt, "max_gen_len": 1024, "temperature": 0.1}
+        elif "nova" in MODEL_ID.lower() or "amazon" in MODEL_ID.lower():
+            body = {
+                "schemaVersion": "messages-v1",
+                "messages": [
+                    {"role": "user", "content": [{"text": prompt}]}
+                ],
+                "inferenceConfig": {
+                    "maxTokens": 1024,
+                    "temperature": 0.1,
+                }
+            }
         else:
             body = {
                 "anthropic_version": "bedrock-2023-05-31",
@@ -167,6 +178,10 @@ Return ONLY runnable code. No explanations. No markdown. No ```. Maximum 25 line
 
         if "generation" in result:
             code = result["generation"].strip()
+        elif "output" in result and "message" in result["output"]:
+            # Amazon Nova format
+            content = result["output"]["message"].get("content", [])
+            code = content[0].get("text", "").strip() if content else ""
         elif "content" in result:
             code = result["content"][0]["text"].strip()
         else:

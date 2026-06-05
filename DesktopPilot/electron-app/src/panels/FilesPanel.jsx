@@ -55,7 +55,7 @@ export default function FilesPanel() {
 
   const openFile = async (path) => {
     try {
-      await fetch('http://localhost:8000/files/open', {
+      await fetch('http://localhost:8888/files/open', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ path }),

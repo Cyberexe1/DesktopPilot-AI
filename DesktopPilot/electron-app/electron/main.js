@@ -16,9 +16,9 @@ const fs      = require('fs')
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const IS_DEV       = process.env.NODE_ENV === 'development' || !app.isPackaged
-const FASTAPI_PORT = 8000
+const FASTAPI_PORT = 8888
 const RENDERER_URL = IS_DEV
-  ? 'http://localhost:5173'
+  ? 'http://localhost:5174'
   : `file://${path.join(__dirname, '../dist/index.html')}`
 
 // ── State ─────────────────────────────────────────────────────────────────────

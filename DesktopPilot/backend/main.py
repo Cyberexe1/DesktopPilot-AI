@@ -556,6 +556,79 @@ def _generate_voice_response(results: list, intent: str) -> str:
         elif tool == "run_terminal":
             return "Command is running in the terminal, Sir."
 
+        # ── File Operations ──
+        elif tool == "copy_file":
+            return f"File copied. {msg}"
+
+        elif tool == "copy_files_by_type":
+            return msg
+
+        elif tool == "move_file":
+            return f"File moved. {msg}"
+
+        elif tool == "move_files_by_type":
+            return msg
+
+        elif tool == "rename_file":
+            return f"File renamed. {msg}"
+
+        elif tool == "delete_file":
+            return f"File deleted, Sir."
+
+        elif tool == "delete_by_pattern":
+            return msg
+
+        elif tool == "create_folder":
+            return f"Folder created, Sir."
+
+        elif tool == "zip_folder":
+            return "Zipped successfully, Sir."
+
+        elif tool == "unzip_file":
+            return "Extracted successfully, Sir."
+
+        elif tool == "cleanup_desktop":
+            return "Desktop organized into folders, Sir."
+
+        # ── Info tools — speak the result ──
+        elif tool in ("list_large_files", "find_duplicates", "check_ports",
+                      "show_env_variables", "get_disk_usage", "get_wifi_info",
+                      "show_installed_programs", "get_startup_programs",
+                      "check_network_speed"):
+            # Speak a short summary of the result
+            lines = msg.split('\n')
+            if len(lines) > 3:
+                return f"Here's what I found, Sir. {lines[0]}. Check the app for full details."
+            return msg[:150] if msg else "Done, Sir."
+
+        # ── System Maintenance ──
+        elif tool == "clear_recycle_bin":
+            return "Recycle bin emptied, Sir."
+
+        elif tool == "flush_dns":
+            return "DNS cache flushed, Sir."
+
+        elif tool == "open_disk_cleanup":
+            return "Disk cleanup is open, Sir."
+
+        elif tool == "open_device_manager":
+            return "Device manager is open, Sir."
+
+        elif tool == "open_services":
+            return "Services manager is open, Sir."
+
+        elif tool == "check_updates":
+            return "Windows Update is open, Sir."
+
+        elif tool == "shutdown":
+            return msg
+
+        elif tool == "restart":
+            return msg
+
+        elif tool == "cancel_shutdown":
+            return "Shutdown cancelled, Sir."
+
         else:
             return "Done, Sir."
 

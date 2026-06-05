@@ -10,7 +10,7 @@ export default function StatusBar() {
       <div className="statusbar-left">
         <span className={`status-dot ${backendReady ? 'dot-ok' : 'dot-warn'}`} />
         <span className="text-xs text-muted">
-          {backendReady ? 'FastAPI :8000' : 'Backend starting...'}
+          {backendReady ? 'FastAPI :8888' : 'Backend starting...'}
         </span>
       </div>
 

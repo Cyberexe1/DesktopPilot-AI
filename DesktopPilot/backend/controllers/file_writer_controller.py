@@ -135,39 +135,168 @@ def create_file(filename: str, content: str = "", directory: str = "") -> str:
 
 def create_project(project_name: str, framework: str, directory: str = "") -> str:
     """
-    Scaffold a project structure and open in VS Code.
-    Supports: vite, nextjs, nodejs, python, html
+    Create a project by opening a terminal and running the REAL CLI commands.
+    Opens a visible CMD window so user can see the setup happening.
+    Supports: vite, nextjs, nodejs, python, django, fastapi, html
     """
     if not directory:
         directory = os.path.expanduser("~/Desktop")
 
+    # Normalize directory paths
+    directory = directory.replace("/", "\\")
+    if not os.path.exists(directory):
+        os.makedirs(directory, exist_ok=True)
+
     project_dir = os.path.join(directory, project_name)
 
     if os.path.exists(project_dir):
-        # Just open existing project
         _open_in_vscode(project_dir)
         return f"Project already exists, opened in VS Code: {project_dir}"
 
-    os.makedirs(project_dir, exist_ok=True)
-
     fw = framework.lower()
 
-    if fw in ("vite", "react", "react-vite"):
-        _scaffold_vite(project_dir, project_name)
-    elif fw in ("nextjs", "next", "next.js"):
-        _scaffold_nextjs(project_dir, project_name)
-    elif fw in ("nodejs", "node", "express"):
-        _scaffold_nodejs(project_dir, project_name)
-    elif fw in ("python", "flask", "fastapi"):
-        _scaffold_python(project_dir, project_name)
-    elif fw in ("html", "static", "website"):
-        _scaffold_html(project_dir, project_name)
-    else:
-        # Generic — just create a README
-        _write(project_dir, "README.md", f"# {project_name}\n\nProject created by DesktopPilot AI\n")
+    # Get the terminal commands for this framework
+    commands = _get_project_commands(project_name, fw, directory)
 
-    _open_in_vscode(project_dir)
-    return f"Project scaffolded and opened in VS Code: {project_dir}"
+    if not commands:
+        # Fallback: manual scaffold for unknown frameworks
+        os.makedirs(project_dir, exist_ok=True)
+        _write(project_dir, "README.md", f"# {project_name}\n\nProject created by DesktopPilot AI\n")
+        _open_in_vscode(project_dir)
+        return f"Project '{project_name}' created (basic scaffold): {project_dir}"
+
+    # Run all commands in a visible terminal window
+    _run_in_visible_terminal(commands, directory)
+
+    return f"Setting up {framework} project '{project_name}' in terminal at {directory}. VS Code will open when ready."
+
+
+def _get_project_commands(name: str, framework: str, directory: str) -> str:
+    """
+    Return the full command string to set up a project.
+    These run in a visible CMD window so the user sees progress.
+    """
+    project_path = os.path.join(directory, name)
+
+    if framework in ("vite", "react", "react-vite"):
+        return (
+            f'cd /d "{directory}" && '
+            f'npm create vite@latest {name} -- --template react && '
+            f'cd {name} && '
+            f'npm install && '
+            f'code . && '
+            f'echo Project ready! You can run: npm run dev'
+        )
+
+    elif framework in ("nextjs", "next", "next.js"):
+        return (
+            f'cd /d "{directory}" && '
+            f'npx create-next-app@latest {name} --js --no-tailwind --no-eslint --app --use-npm && '
+            f'cd {name} && '
+            f'code . && '
+            f'echo Project ready! You can run: npm run dev'
+        )
+
+    elif framework in ("nodejs", "node", "express"):
+        return (
+            f'cd /d "{directory}" && '
+            f'mkdir {name} && cd {name} && '
+            f'npm init -y && '
+            f'npm install express && '
+            f'code . && '
+            f'echo Project ready! You can run: node index.js'
+        )
+
+    elif framework in ("django",):
+        return (
+            f'cd /d "{directory}" && '
+            f'mkdir {name} && cd {name} && '
+            f'python -m venv venv && '
+            f'venv\\Scripts\\pip install django && '
+            f'venv\\Scripts\\django-admin startproject {name} . && '
+            f'code . && '
+            f'echo Project ready! Activate venv then run: python manage.py runserver'
+        )
+
+    elif framework in ("fastapi", "fast-api"):
+        return (
+            f'cd /d "{directory}" && '
+            f'mkdir {name} && cd {name} && '
+            f'python -m venv venv && '
+            f'venv\\Scripts\\pip install fastapi uvicorn && '
+            f'code . && '
+            f'echo Project ready! Activate venv then run: uvicorn main:app --reload'
+        )
+
+    elif framework in ("python", "flask"):
+        return (
+            f'cd /d "{directory}" && '
+            f'mkdir {name} && cd {name} && '
+            f'python -m venv venv && '
+            f'venv\\Scripts\\pip install flask && '
+            f'code . && '
+            f'echo Project ready! Activate venv then run: python app.py'
+        )
+
+    elif framework in ("html", "static", "website"):
+        # Just create folder structure and open in VS Code
+        os.makedirs(project_path, exist_ok=True)
+        _scaffold_html(project_path, name)
+        _open_in_vscode(project_path)
+        return ""  # No terminal needed
+
+    elif framework in ("angular",):
+        return (
+            f'cd /d "{directory}" && '
+            f'npx @angular/cli new {name} --skip-git --skip-tests && '
+            f'cd {name} && '
+            f'code . && '
+            f'echo Project ready! You can run: ng serve'
+        )
+
+    elif framework in ("vue", "vue.js", "vuejs"):
+        return (
+            f'cd /d "{directory}" && '
+            f'npm create vue@latest {name} -- --default && '
+            f'cd {name} && '
+            f'npm install && '
+            f'code . && '
+            f'echo Project ready! You can run: npm run dev'
+        )
+
+    elif framework in ("svelte", "sveltekit"):
+        return (
+            f'cd /d "{directory}" && '
+            f'npm create svelte@latest {name} && '
+            f'cd {name} && '
+            f'npm install && '
+            f'code . && '
+            f'echo Project ready! You can run: npm run dev'
+        )
+
+    else:
+        # Generic: create folder + npm init
+        return (
+            f'cd /d "{directory}" && '
+            f'mkdir {name} && cd {name} && '
+            f'npm init -y && '
+            f'code . && '
+            f'echo Project created!'
+        )
+
+
+def _run_in_visible_terminal(commands: str, cwd: str = "") -> None:
+    """Open a CMD window and run commands visibly so the user can watch."""
+    try:
+        full_cmd = f'cmd /k "{commands}"'
+        subprocess.Popen(
+            f'start cmd /k "{commands}"',
+            shell=True,
+            cwd=cwd if os.path.exists(cwd) else None,
+        )
+        log.info(f"Opened terminal with: {commands[:100]}...")
+    except Exception as e:
+        log.error(f"Failed to open terminal: {e}")
 
 
 def write_to_file(filepath: str, content: str, mode: str = "w") -> str:
@@ -557,3 +686,5 @@ def _scaffold_html(d: str, name: str):
     _write(d, "index.html", f"<!DOCTYPE html>\n<html>\n<head>\n  <title>{name}</title>\n  <link rel='stylesheet' href='style.css'>\n</head>\n<body>\n  <h1>{name}</h1>\n  <script src='script.js'></script>\n</body>\n</html>\n")
     _write(d, "style.css", "body { font-family: sans-serif; margin: 2rem; }\nh1 { color: #333; }\n")
     _write(d, "script.js", "console.log('Hello from " + name + "')\n")
+
+

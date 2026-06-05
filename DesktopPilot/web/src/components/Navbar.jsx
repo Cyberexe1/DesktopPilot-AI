@@ -14,11 +14,11 @@ export default function Navbar() {
   useEffect(() => {
     const check = async () => {
       try {
-        const res = await fetch('http://localhost:8000/health', { signal: AbortSignal.timeout(2000) })
+        const res = await fetch('http://localhost:8888/health', { signal: AbortSignal.timeout(2000) })
         const ok  = res.ok
         setAgentConnected(ok)
         if (ok) {
-          const cr = await fetch('http://localhost:8000/credits')
+          const cr = await fetch('http://localhost:8888/credits')
           const cd = await cr.json()
           if (cd.data?.credits_remaining != null) setCredits(cd.data.credits_remaining)
         }

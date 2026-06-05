@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { LogIn, UserPlus, Eye, EyeOff } from 'lucide-react'
 import './LoginPanel.css'
 
-const API = 'http://localhost:8000'
+const API = 'http://localhost:8888'
 
 export default function LoginPanel({ onLogin }) {
   const [mode, setMode]         = useState('login')

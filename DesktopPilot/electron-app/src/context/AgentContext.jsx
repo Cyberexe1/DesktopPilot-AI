@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react'
 
 const AgentContext = createContext(null)
-const API = 'http://localhost:8000'
+const API = 'http://localhost:8888'
 
 export function AgentProvider({ children }) {
   const [backendReady, setBackendReady] = useState(false)
@@ -40,7 +40,7 @@ export function AgentProvider({ children }) {
 
     const connect = () => {
       try {
-        ws = new WebSocket('ws://localhost:8000/ws')
+        ws = new WebSocket('ws://localhost:8888/ws')
         wsRef.current = ws
 
         ws.onopen = () => {

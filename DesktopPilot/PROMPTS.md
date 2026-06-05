@@ -231,3 +231,146 @@ All voice/text commands the system can execute.
 - "Create a project, install dependencies, start server, open browser"
 - "Open Notepad and write a letter to my boss about leave"
 - "Take a screenshot and open it"
+
+---
+
+## File Copy & Move Operations
+
+- "Copy my resume from C drive to D drive"
+- "Move all PDFs from Downloads to Documents"
+- "Copy the project folder from Desktop to D drive"
+- "Move my screenshots from Desktop to Pictures"
+- "Copy notes.txt from Documents to USB drive"
+- "Move all images from Downloads to Pictures/2024"
+- "Copy my entire project to a backup folder on D drive"
+- "Move old files from Desktop to Archive folder"
+- "Copy the database file to D:/Backups"
+- "Move all .docx files from Desktop to Documents/Reports"
+
+---
+
+## File Organization
+
+- "Create a folder called Projects on D drive"
+- "Rename my file report.docx to final-report.docx"
+- "Delete all temp files from Downloads"
+- "Sort my Downloads folder by file type"
+- "Create folder structure: src, tests, docs in my project"
+- "Zip my project folder and save to Desktop"
+- "Extract the zip file on my Desktop"
+- "List all large files in my Downloads folder"
+- "Find duplicate files in my Documents"
+- "Clean up my Desktop — move files to proper folders"
+
+---
+
+## Advanced Browser Tasks
+
+- "Open YouTube and search for Python crash course"
+- "Open LinkedIn and go to my profile"
+- "Open GitHub and create a new repository"
+- "Open Stack Overflow and search for FastAPI WebSocket"
+- "Open Google Docs and create a new document"
+- "Open ChatGPT in Chrome"
+- "Open AWS Console in browser"
+- "Open localhost:3000 in Chrome"
+- "Open Google Maps and search for restaurants nearby"
+- "Open Twitter and go to my notifications"
+
+---
+
+## Advanced Email
+
+- "Email my professor about assignment extension"
+- "Send email to team@company.com with today's standup notes"
+- "Compose email to client about project deadline extension"
+- "Email my manager saying I'm working from home tomorrow"
+- "Send a thank you email to hr@company.com for the offer letter"
+- "Draft an email to supplier about delayed shipment"
+- "Email the team about Friday's team lunch at 1pm"
+- "Compose a follow-up email to john@gmail.com about the proposal"
+
+---
+
+## Terminal & Dev Commands
+
+- "Run pip install flask in my project"
+- "Run python manage.py makemigrations"
+- "Execute npm run build in my React project"
+- "Run docker-compose up in my project"
+- "Run git add and commit with message 'initial setup'"
+- "Open terminal and run ipconfig"
+- "Run pytest in my backend folder"
+- "Execute npm audit fix"
+- "Run git pull origin main"
+- "Start MongoDB service"
+
+---
+
+## Productivity
+
+- "Set a reminder for my meeting in 30 minutes"
+- "Create a to-do list with 5 tasks for today"
+- "Open my calendar"
+- "Create a daily schedule in Notepad"
+- "Write meeting minutes for today's standup"
+- "Draft a project proposal outline"
+- "Create a weekly plan for my assignments"
+- "Write a README file for my project"
+- "Generate a .gitignore for a Python project"
+- "Create a requirements.txt from my installed packages"
+
+---
+
+## System Maintenance
+
+- "Clear my recycle bin"
+- "Check for Windows updates"
+- "Show my installed programs"
+- "Open disk cleanup"
+- "Open device manager"
+- "Check my network speed"
+- "Flush DNS cache"
+- "Show my environment variables"
+- "Open services manager"
+- "Check which ports are in use"
+
+---
+
+## Content Creation
+
+- "Write a blog post about cloud computing"
+- "Create a cover letter for a software engineer position"
+- "Write a LinkedIn post about my new project"
+- "Create a project description for my portfolio"
+- "Write release notes for version 2.0"
+- "Draft a technical documentation outline"
+- "Write an abstract for my research paper"
+- "Create a README template for open source projects"
+- "Write an API documentation for my REST endpoints"
+- "Draft a bug report template"
+
+---
+
+## Database Operations
+
+- "Create a SQLite database called inventory.db"
+- "Show all tables in my database"
+- "Back up my database to D drive"
+- "Run a SQL query to show all users"
+- "Export my database to CSV"
+
+---
+
+## Automation Workflows
+
+- "Every morning open Chrome, Gmail, and VS Code"
+- "Start my full-stack dev environment — backend + frontend + browser"
+- "Close all apps and shut down in 5 minutes"
+- "Open my work apps: Slack, VS Code, Chrome, and Terminal"
+- "Prepare my presentation setup — open PowerPoint and connect display settings"
+- "Set up my coding environment — open VS Code, terminal, and Chrome DevTools docs"
+- "Open all my communication apps — WhatsApp, Slack, Gmail"
+- "Start my design workflow — open Figma, Chrome, and Notepad for notes"
+- "Prepare for a demo — open project, start server, open browser to localhost"
+- "Wind down my workspace — save all, close all apps, lower brightness"

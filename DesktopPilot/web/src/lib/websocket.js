@@ -1,9 +1,9 @@
 /**
- * WebSocket client — connects to the local FastAPI backend at ws://localhost:8000/ws
+ * WebSocket client — connects to the local FastAPI backend at ws://localhost:8888/ws
  * Used by the Vercel web dashboard to receive live execution updates.
  */
 
-const WS_URL = 'ws://localhost:8000/ws'
+const WS_URL = 'ws://localhost:8888/ws'
 
 let socket         = null
 let reconnectTimer = null

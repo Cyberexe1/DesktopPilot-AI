@@ -25,6 +25,10 @@ def _is_llama() -> bool:
     return "meta" in MODEL_ID.lower() or "llama" in MODEL_ID.lower()
 
 
+def _is_nova() -> bool:
+    return "nova" in MODEL_ID.lower() or "amazon" in MODEL_ID.lower()
+
+
 def generate_content(topic: str, content_type: str = "presentation", 
                      num_slides: int = 4, extra_instructions: str = "") -> str:
     """
@@ -44,6 +48,17 @@ def generate_content(topic: str, content_type: str = "presentation",
     try:
         if _is_llama():
             body = {"prompt": prompt, "max_gen_len": 2048, "temperature": 0.3}
+        elif _is_nova():
+            body = {
+                "schemaVersion": "messages-v1",
+                "messages": [
+                    {"role": "user", "content": [{"text": prompt}]}
+                ],
+                "inferenceConfig": {
+                    "maxTokens": 2048,
+                    "temperature": 0.3,
+                }
+            }
         else:
             body = {
                 "anthropic_version": "bedrock-2023-05-31",
@@ -63,6 +78,10 @@ def generate_content(topic: str, content_type: str = "presentation",
         # Extract text based on model type
         if "generation" in result:
             text = result["generation"].strip()
+        elif "output" in result and "message" in result["output"]:
+            # Amazon Nova format
+            content = result["output"]["message"].get("content", [])
+            text = content[0].get("text", "").strip() if content else ""
         elif "content" in result:
             text = result["content"][0]["text"].strip()
         else:

@@ -6,12 +6,13 @@ Supports multi-step chaining with automatic waits between dependent steps.
 import asyncio
 import json
 import logging
+import os
 import time
 
 import requests
 
 from controllers.app_controller import open_application
-from controllers.browser_controller import open_url, search_web, open_gmail_compose
+from controllers.browser_controller import open_url, search_web, search_youtube, open_gmail_compose
 from controllers.file_controller import open_file
 from controllers.file_writer_controller import create_file, write_to_file, create_project
 from controllers.terminal_controller import run_in_terminal, open_vscode
@@ -39,6 +40,18 @@ from controllers.brightness_controller import (
     volume_up, volume_down, mute_toggle, set_volume
 )
 from controllers.smart_reply_controller import smart_reply, smart_reply_and_type
+from controllers.browser_playwright_controller import (
+    goto as pw_goto, go_back as pw_go_back, refresh_page as pw_refresh,
+    click_text as pw_click_text, click_link as pw_click_link, click_button as pw_click_button,
+    click_selector as pw_click_selector,
+    type_in_field as pw_type_in_field, search_on_page as pw_search_on_page,
+    fill_web_form as pw_fill_web_form, submit_form as pw_submit_form,
+    get_page_text as pw_get_page_text, get_page_title as pw_get_page_title,
+    get_page_links as pw_get_page_links, screenshot_page as pw_screenshot_page,
+    scroll_down as pw_scroll_down, scroll_up as pw_scroll_up, scroll_to_bottom as pw_scroll_to_bottom,
+    new_tab as pw_new_tab, close_tab as pw_close_tab, list_tabs as pw_list_tabs,
+    switch_tab as pw_switch_tab, close_browser as pw_close_browser,
+)
 from controllers.file_ops_controller import (
     copy_file, copy_files_by_extension, move_file, move_files_by_extension,
     rename_file, delete_file as delete_file_op, delete_files_by_pattern,
@@ -111,23 +124,106 @@ async def execute_task(task: dict, user_id: str = "default", prev_tool: str = ""
         return result
 
     elif tool == "open_file":
-        return await loop.run_in_executor(None, open_file, task.get("name", ""))
+        name_or_path = task.get("name", task.get("path", ""))
+        # If it's a full path (from a previous step like take_screenshot), open directly
+        if os.path.exists(name_or_path):
+            os.startfile(name_or_path)
+            return f"Opened: {os.path.basename(name_or_path)}"
+        return await loop.run_in_executor(None, open_file, name_or_path)
 
     elif tool == "open_browser":
         url = task.get("url", "https://google.com")
-        result = await open_url(url)
-        # Wait for browser to appear
-        await loop.run_in_executor(None, wait_for_window, "chrome", 5)
+        # Use Playwright (CDP to user's Chrome) for all browser opens
+        result = await pw_goto(url)
         return result
 
     elif tool == "navigate":
         url = task.get("url", "")
-        result = await open_url(url)
-        await asyncio.sleep(2)  # Wait for navigation
-        return result
+        return await pw_goto(url)
 
     elif tool == "search_web":
-        return await search_web(task.get("query", ""))
+        query = task.get("query", "")
+        return await pw_goto(f"https://www.google.com/search?q={query.replace(' ', '+')}")
+
+    elif tool == "search_youtube":
+        query = task.get("query", "")
+        return await pw_search_on_page(query, "https://www.youtube.com")
+
+    # ── Playwright Browser Tools ──────────────────────────────────────────
+    elif tool == "browser_goto":
+        url = task.get("url", "")
+        return await pw_goto(url)
+
+    elif tool == "browser_click":
+        text = task.get("text", task.get("element", ""))
+        return await pw_click_text(text)
+
+    elif tool == "browser_click_link":
+        text = task.get("text", task.get("link", ""))
+        return await pw_click_link(text)
+
+    elif tool == "browser_click_button":
+        text = task.get("text", task.get("button", ""))
+        return await pw_click_button(text)
+
+    elif tool == "browser_type":
+        text = task.get("text", task.get("value", ""))
+        selector = task.get("selector", "")
+        placeholder = task.get("placeholder", "")
+        label = task.get("label", "")
+        return await pw_type_in_field(text, selector, placeholder, label)
+
+    elif tool == "browser_search":
+        query = task.get("query", task.get("text", ""))
+        site_url = task.get("url", "")
+        return await pw_search_on_page(query, site_url)
+
+    elif tool == "browser_fill_form":
+        fields = task.get("fields", {})
+        return await pw_fill_web_form(fields)
+
+    elif tool == "browser_submit":
+        return await pw_submit_form()
+
+    elif tool == "browser_read_page":
+        return await pw_get_page_text()
+
+    elif tool == "browser_get_title":
+        return await pw_get_page_title()
+
+    elif tool == "browser_get_links":
+        return await pw_get_page_links()
+
+    elif tool == "browser_screenshot":
+        name = task.get("name", "")
+        return await pw_screenshot_page(name)
+
+    elif tool == "browser_scroll_down":
+        amount = int(task.get("amount", 500))
+        return await pw_scroll_down(amount)
+
+    elif tool == "browser_scroll_up":
+        amount = int(task.get("amount", 500))
+        return await pw_scroll_up(amount)
+
+    elif tool == "browser_back":
+        return await pw_go_back()
+
+    elif tool == "browser_refresh":
+        return await pw_refresh()
+
+    elif tool == "browser_new_tab":
+        url = task.get("url", "")
+        return await pw_new_tab(url)
+
+    elif tool == "browser_close_tab":
+        return await pw_close_tab()
+
+    elif tool == "browser_list_tabs":
+        return await pw_list_tabs()
+
+    elif tool == "browser_close":
+        return await pw_close_browser()
 
     elif tool == "wait":
         # Explicit wait — user or AI requested a pause

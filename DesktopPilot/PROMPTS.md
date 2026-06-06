@@ -352,25 +352,4 @@ All voice/text commands the system can execute.
 
 ---
 
-## Database Operations
 
-- "Create a SQLite database called inventory.db"
-- "Show all tables in my database"
-- "Back up my database to D drive"
-- "Run a SQL query to show all users"
-- "Export my database to CSV"
-
----
-
-## Automation Workflows
-
-- "Every morning open Chrome, Gmail, and VS Code"
-- "Start my full-stack dev environment — backend + frontend + browser"
-- "Close all apps and shut down in 5 minutes"
-- "Open my work apps: Slack, VS Code, Chrome, and Terminal"
-- "Prepare my presentation setup — open PowerPoint and connect display settings"
-- "Set up my coding environment — open VS Code, terminal, and Chrome DevTools docs"
-- "Open all my communication apps — WhatsApp, Slack, Gmail"
-- "Start my design workflow — open Figma, Chrome, and Notepad for notes"
-- "Prepare for a demo — open project, start server, open browser to localhost"
-- "Wind down my workspace — save all, close all apps, lower brightness"

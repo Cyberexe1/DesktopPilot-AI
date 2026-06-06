@@ -14,7 +14,7 @@ def notify(title: str, message: str):
     safe_title = title.replace("'", "''").replace('"', '`"')
     safe_msg   = message.replace("'", "''").replace('"', '`"')
 
-    # Use BurntToast module if available, else fallback to .NET
+    # Method 1: PowerShell toast notification
     ps = f"""
 try {{
     # Try BurntToast (best Windows 11 support)
@@ -22,7 +22,19 @@ try {{
         Import-Module BurntToast
         New-BurntToastNotification -Text '{safe_title}', '{safe_msg}'
     }} else {{
-        # Fallback: .NET NotifyIcon (works on Win 10/11)
+        # Fallback: Windows 10/11 toast via Shell
+        [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
+        [Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom, ContentType = WindowsRuntime] | Out-Null
+        $template = '<toast><visual><binding template="ToastText02"><text id="1">{safe_title}</text><text id="2">{safe_msg}</text></binding></visual></toast>'
+        $xml = New-Object Windows.Data.Xml.Dom.XmlDocument
+        $xml.LoadXml($template)
+        $toast = [Windows.UI.Notifications.ToastNotification]::new($xml)
+        $notifier = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("DesktopPilot AI")
+        $notifier.Show($toast)
+    }}
+}} catch {{
+    # Final fallback: balloon tip
+    try {{
         Add-Type -AssemblyName System.Windows.Forms
         $n = New-Object System.Windows.Forms.NotifyIcon
         $n.Icon = [System.Drawing.SystemIcons]::Information
@@ -30,12 +42,10 @@ try {{
         $n.BalloonTipTitle = '{safe_title}'
         $n.BalloonTipText = '{safe_msg}'
         $n.Visible = $true
-        $n.ShowBalloonTip(4000)
-        Start-Sleep -Milliseconds 4500
+        $n.ShowBalloonTip(5000)
+        Start-Sleep -Milliseconds 5500
         $n.Dispose()
-    }}
-}} catch {{
-    # Silently fail — notifications are non-critical
+    }} catch {{}}
 }}
 """
     try:

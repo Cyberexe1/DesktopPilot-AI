@@ -185,6 +185,12 @@ def start_timer(seconds: int, message: str = "Timer done!") -> str:
         time.sleep(seconds)
         from controllers.notification_controller import notify
         notify("⏰ Timer", message)
+        # Also speak the reminder aloud so user hears it
+        try:
+            from controllers.voice_output_controller import speak
+            speak(f"Reminder, Sir: {message}")
+        except Exception:
+            pass
         log.info(f"Timer done: {message}")
         # Remove from active timers
         _active_timers[:] = [t for t in _active_timers if t["end_time"] > time.time()]

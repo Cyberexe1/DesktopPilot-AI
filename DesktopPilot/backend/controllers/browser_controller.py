@@ -5,10 +5,13 @@ Falls back to subprocess if Playwright is not available or fails.
 
 import asyncio
 import logging
+import os
 import subprocess
 import urllib.parse
 
 log = logging.getLogger(__name__)
+
+_USER = os.environ.get("USERNAME", "User")
 
 # Detect Playwright availability once at import time
 try:
@@ -23,18 +26,20 @@ except ImportError:
 # ── Public API (all async) ────────────────────────────────────────────────────
 
 async def open_url(url: str) -> str:
-    """Open a URL. Uses Playwright if available, else default browser."""
-    if PLAYWRIGHT_AVAILABLE:
-        result = await _playwright_open(url)
-        if result:
-            return result
+    """Open a URL in the user's Chrome (their logged-in profile)."""
     return _subprocess_open(url)
 
 
 async def search_web(query: str) -> str:
-    """Open a Google search."""
+    """Open a Google search in the user's Chrome."""
     encoded = urllib.parse.quote_plus(query)
-    return await open_url(f"https://www.google.com/search?q={encoded}")
+    return _subprocess_open(f"https://www.google.com/search?q={encoded}")
+
+
+async def search_youtube(query: str) -> str:
+    """Search YouTube directly in the user's Chrome."""
+    encoded = urllib.parse.quote_plus(query)
+    return _subprocess_open(f"https://www.youtube.com/results?search_query={encoded}")
 
 
 async def open_gmail_compose(to: str = "", subject: str = "", body: str = "") -> str:
@@ -79,7 +84,17 @@ async def open_gmail_compose(to: str = "", subject: str = "", body: str = "") ->
         "body": body,
     })
     url = f"https://mail.google.com/mail/?{params}"
-    subprocess.Popen(["cmd", "/c", "start", "", url], shell=False)
+    # Open specifically in Chrome
+    chrome_paths = [
+        rf"C:\Program Files\Google\Chrome\Application\chrome.exe",
+        rf"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+        rf"C:\Users\{_USER}\AppData\Local\Google\Chrome\Application\chrome.exe",
+    ]
+    chrome_exe = next((p for p in chrome_paths if os.path.exists(p)), None)
+    if chrome_exe:
+        subprocess.Popen([chrome_exe, url], shell=False)
+    else:
+        subprocess.Popen(["cmd", "/c", "start", "", url], shell=False)
 
     # Wait for Chrome/Gmail to fully load
     log.info("Waiting for Gmail compose to load...")
@@ -226,16 +241,40 @@ async def _playwright_gmail(to: str, subject: str, body: str) -> str | None:
 # ── Subprocess fallback ───────────────────────────────────────────────────────
 
 def _subprocess_open(url: str) -> str:
-    """Open URL in default browser via Windows shell."""
+    """Open URL in the user's actual Chrome (with their logged-in profile)."""
     try:
-        subprocess.Popen(["cmd", "/c", "start", "", url], shell=False)
-        msg = f"Opened browser: {url}"
+        # Try common Chrome paths
+        chrome_paths = [
+            rf"C:\Program Files\Google\Chrome\Application\chrome.exe",
+            rf"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+            rf"C:\Users\{_USER}\AppData\Local\Google\Chrome\Application\chrome.exe",
+        ]
+
+        chrome_exe = None
+        for path in chrome_paths:
+            if os.path.exists(path):
+                chrome_exe = path
+                break
+
+        if chrome_exe:
+            # Open in user's existing Chrome profile (the one they're logged into)
+            subprocess.Popen([chrome_exe, "--profile-directory=Default", url], shell=False)
+        else:
+            # Fallback: try "chrome" command (might be in PATH)
+            subprocess.Popen(["chrome", url], shell=False)
+
+        msg = f"Opened in Chrome: {url}"
         log.info(msg)
         return msg
     except Exception as e:
-        msg = f"Failed to open browser: {e}"
-        log.error(msg)
-        return msg
+        # Final fallback: default browser
+        try:
+            subprocess.Popen(["cmd", "/c", "start", "", url], shell=False)
+            return f"Opened browser: {url}"
+        except Exception as e2:
+            msg = f"Failed to open browser: {e2}"
+            log.error(msg)
+            return msg
 
 
 def _format_email_body(body: str) -> str:

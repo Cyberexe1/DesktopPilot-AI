@@ -71,6 +71,8 @@ def _find_file(name: str, search_dirs: list = None) -> str:
             os.path.expanduser("~/Documents"),
             os.path.expanduser("~/Downloads"),
             "D:/",
+            "E:/",
+            "F:/",
         ]
 
     for directory in search_dirs:
@@ -327,11 +329,31 @@ def zip_folder(source: str, output: str = "") -> str:
             return f"Not found: {source}"
 
     if not output:
-        output = source.rstrip('/\\') + '.zip'
+        # Default: save zip to Desktop with same name
+        basename = os.path.basename(source.rstrip('/\\'))
+        desktop = os.path.expanduser("~/Desktop")
+        output = os.path.join(desktop, f"{basename}.zip")
+    else:
+        output = _resolve_path(output)
+        # If output is a directory, create zip filename inside it
+        if os.path.isdir(output) or output.endswith('/') or output.endswith('\\'):
+            os.makedirs(output, exist_ok=True)
+            basename = os.path.basename(source.rstrip('/\\'))
+            output = os.path.join(output, f"{basename}.zip")
+        # Ensure output ends with .zip
+        if not output.lower().endswith('.zip'):
+            output = output + '.zip'
+
+    # Ensure output directory exists
+    out_dir = os.path.dirname(output)
+    if out_dir and not os.path.exists(out_dir):
+        os.makedirs(out_dir, exist_ok=True)
 
     try:
         if os.path.isdir(source):
-            shutil.make_archive(output.replace('.zip', ''), 'zip', source)
+            # shutil.make_archive expects path WITHOUT .zip extension
+            archive_base = output[:-4]  # Remove .zip
+            shutil.make_archive(archive_base, 'zip', source)
         else:
             with zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as zf:
                 zf.write(source, os.path.basename(source))

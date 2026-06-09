@@ -9,7 +9,7 @@ import os
 import threading
 from datetime import datetime
 
-from database.sqlite_manager import clear_files, insert_file, register_project
+from database.sqlite_manager import clear_files, insert_file, delete_file_from_index, register_project
 
 log = logging.getLogger(__name__)
 
@@ -22,6 +22,7 @@ SCAN_DIRS = [
     rf"C:\Users\{_USER}\Desktop",
     rf"C:\Users\{_USER}\Documents",
     rf"C:\Users\{_USER}\Downloads",
+    rf"C:\Users\{_USER}\Pictures",
     "D:/Projects",
     "C:/Projects",
     rf"C:\Users\{_USER}\Projects",
@@ -51,6 +52,9 @@ MAX_DEPTH = 4
 # ── Watcher state ─────────────────────────────────────────────────────────────
 _observer      = None
 _reindex_lock  = threading.Lock()
+_debounce_timer = None
+_pending_changes: set = set()
+_DEBOUNCE_SECONDS = 2.0   # Wait 2s after last change before re-indexing
 
 
 # ── Core indexer ──────────────────────────────────────────────────────────────
@@ -190,15 +194,20 @@ def start_file_watcher():
     class _Handler(FileSystemEventHandler):
         def on_created(self, event):
             if not event.is_directory:
-                _on_file_change(event.src_path)
+                _schedule_update(event.src_path, action="add")
 
         def on_deleted(self, event):
             if not event.is_directory:
-                _on_file_change(event.src_path)
+                _schedule_update(event.src_path, action="remove")
 
         def on_moved(self, event):
             if not event.is_directory:
-                _on_file_change(event.dest_path)
+                _schedule_update(event.src_path, action="remove")
+                _schedule_update(event.dest_path, action="add")
+
+        def on_modified(self, event):
+            if not event.is_directory:
+                _schedule_update(event.src_path, action="add")
 
     _observer = Observer()
     handler   = _Handler()
@@ -223,7 +232,9 @@ def start_file_watcher():
 
 
 def stop_file_watcher():
-    global _observer
+    global _observer, _debounce_timer
+    if _debounce_timer:
+        _debounce_timer.cancel()
     if _observer and _observer.is_alive():
         _observer.stop()
         _observer.join(timeout=3)
@@ -231,16 +242,62 @@ def stop_file_watcher():
         log.info("File watcher stopped")
 
 
-def _on_file_change(path: str):
-    """Debounced re-index triggered by file system events."""
+def _schedule_update(path: str, action: str):
+    """
+    Debounced update — collects file changes and processes them in a batch
+    after DEBOUNCE_SECONDS of quiet. Prevents hammering SQLite on bulk operations.
+    """
+    global _debounce_timer
+
     ext = os.path.splitext(path)[1].lower()
     if ext not in ALLOWED_EXTENSIONS:
         return
 
-    # Only re-index if not already running
-    if _reindex_lock.acquire(blocking=False):
+    # Track the change
+    _pending_changes.add((path, action))
+
+    # Cancel existing timer and restart debounce
+    if _debounce_timer:
+        _debounce_timer.cancel()
+
+    _debounce_timer = threading.Timer(_DEBOUNCE_SECONDS, _process_pending_changes)
+    _debounce_timer.daemon = True
+    _debounce_timer.start()
+
+
+def _process_pending_changes():
+    """Process all pending file changes incrementally (no full re-index)."""
+    global _pending_changes
+
+    if not _pending_changes:
+        return
+
+    # Grab and clear pending changes
+    with _reindex_lock:
+        changes = list(_pending_changes)
+        _pending_changes.clear()
+
+    if not changes:
+        return
+
+    added = 0
+    removed = 0
+
+    for path, action in changes:
         try:
-            log.info(f"File change detected: {os.path.basename(path)} — re-indexing")
-            index_files()
-        finally:
-            _reindex_lock.release()
+            if action == "add" and os.path.exists(path):
+                name = os.path.basename(path)
+                modified = datetime.fromtimestamp(
+                    os.path.getmtime(path)
+                ).isoformat()
+                insert_file(name, path, modified)
+                added += 1
+            elif action == "remove":
+                delete_file_from_index(path)
+                removed += 1
+        except Exception as e:
+            log.warning(f"Error processing file change {path}: {e}")
+
+    if added or removed:
+        log.info(f"File index updated: +{added} added, -{removed} removed "
+                 f"({len(changes)} changes processed)")

@@ -26,7 +26,7 @@ def init_db():
             CREATE TABLE IF NOT EXISTS files (
                 id            INTEGER PRIMARY KEY AUTOINCREMENT,
                 name          TEXT NOT NULL,
-                path          TEXT NOT NULL,
+                path          TEXT NOT NULL UNIQUE,
                 modified_date TEXT
             );
 
@@ -64,10 +64,30 @@ def clear_files():
 def insert_file(name: str, path: str, modified_date: str):
     conn = get_conn()
     try:
+        # Upsert: update if path exists, insert if not
         conn.execute(
-            "INSERT INTO files (name, path, modified_date) VALUES (?, ?, ?)",
+            """INSERT INTO files (name, path, modified_date) VALUES (?, ?, ?)
+               ON CONFLICT(path) DO UPDATE SET
+               name=excluded.name, modified_date=excluded.modified_date""",
             (name, path, modified_date)
         )
+        conn.commit()
+    except Exception:
+        # Fallback: plain insert if ON CONFLICT not supported
+        conn.execute(
+            "INSERT OR REPLACE INTO files (name, path, modified_date) VALUES (?, ?, ?)",
+            (name, path, modified_date)
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def delete_file_from_index(path: str):
+    """Remove a specific file from the index by its path."""
+    conn = get_conn()
+    try:
+        conn.execute("DELETE FROM files WHERE path = ?", (path,))
         conn.commit()
     finally:
         conn.close()

@@ -155,14 +155,48 @@ def get_credits(user_id: str = "default") -> int:
 
 # ── Prompt enrichment ─────────────────────────────────────────────────────────
 
+# Conversation history for multi-turn context (in-memory, resets on restart)
+_conversation_history: list[dict] = []
+MAX_HISTORY = 5  # Keep last 5 exchanges
+
+
+def add_to_history(user_command: str, result: dict):
+    """Store a command + result for multi-turn context."""
+    _conversation_history.append({
+        "command": user_command,
+        "intent": result.get("intent", ""),
+        "tasks": [t.get("tool", "") + "(" + str({k: v for k, v in t.items() if k != "tool"}) + ")"
+                  for t in result.get("tasks", [])[:3]],
+    })
+    # Keep only recent history
+    if len(_conversation_history) > MAX_HISTORY:
+        _conversation_history.pop(0)
+
+
+def get_history_context() -> str:
+    """Get conversation history as context for the AI."""
+    if not _conversation_history:
+        return ""
+
+    lines = ["Recent conversation (for context — user may refer to previous actions):"]
+    for h in _conversation_history[-3:]:  # Last 3 only
+        lines.append(f"  User: \"{h['command']}\" → {h['intent']} → {', '.join(h['tasks'][:2])}")
+    return "\n".join(lines)
+
+
 def enrich_prompt(user_command: str, user_id: str = "default") -> str:
-    """Inject memory context into the Bedrock prompt."""
+    """Inject memory context + conversation history into the Bedrock prompt."""
     context = get_context(user_id)
     lines   = []
 
     if context["last_project"]:
         p = context["last_project"]
         lines.append(f"User's last project: {p.get('name')} at {p.get('path')}")
+
+    # Add conversation history for multi-turn context
+    history = get_history_context()
+    if history:
+        lines.append(history)
 
     memory_block = "\n".join(lines)
     if memory_block:

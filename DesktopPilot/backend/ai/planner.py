@@ -12,6 +12,7 @@ import re
 import boto3
 
 from ai.memory import enrich_prompt
+from ai.memory import add_to_history
 from ai.prompt_enhancer import enhance_prompt
 
 log = logging.getLogger(__name__)
@@ -74,6 +75,15 @@ Browser Automation (Playwright — full control):
 - wait               params: seconds (number) — pause between steps (use when next step depends on previous)
 - navigate           params: url (string) — navigate to a URL in the already-open browser
 - click_element      params: x (number), y (number) — click at screen coordinates
+- right_click        params: x (number, optional), y (number, optional) — right-click at coordinates or current position
+- double_click       params: x (number, optional), y (number, optional) — double-click at coordinates
+- move_mouse         params: x (number), y (number) — move mouse to coordinates smoothly
+- scroll             params: direction (string: "up"|"down"), amount (number, default 3), x (number, optional), y (number, optional)
+- drag_drop          params: from_x (number), from_y (number), to_x (number), to_y (number) — drag from one point and drop at another
+- get_mouse_position params: none — get current cursor position
+- smart_click        params: text (string) — finds text/button on screen using OCR and clicks it. Use this instead of click_element when you don't know coordinates. Examples: smart_click("Save"), smart_click("OK"), smart_click("Submit")
+- smart_right_click  params: text (string) — finds text on screen and right-clicks it
+- smart_double_click params: text (string) — finds text on screen and double-clicks it
 - fill_form          params: none — reads screen for form fields and fills them with user profile data
 - set_profile        params: field (string), value (string) — save user info (name, email, phone, etc.)
 - get_profile        params: none — show current user profile data
@@ -179,6 +189,15 @@ Rules:
 14. For WhatsApp messages, ALWAYS use send_whatsapp tool with contact and message params. NEVER use open_application("WhatsApp") + type_text. The send_whatsapp tool handles everything (opening, finding contact, typing, sending).
 15. For emails, ALWAYS use compose_email tool as a SINGLE step with to, subject, and body params. NEVER use open_browser + navigate + type_text for email. The compose_email tool handles opening Gmail, filling all fields automatically.
 16. When asked to create and run code/script, use generate_code tool. It generates the code, saves it, opens in VS Code, and runs it — all in one step. Specify the language (python, javascript, java, c, cpp, html).
+18. MOUSE CONTROL RULES:
+    - NEVER use click_element with coordinates unless you know exact pixel positions
+    - USE smart_click with the button/label text instead — it finds the element on screen automatically
+    - Example: "click the Save button" → smart_click("Save")
+    - Example: "click OK" → smart_click("OK")
+    - Example: "right-click on the desktop" → right_click (no coordinates needed)
+    - Example: "scroll down" → scroll(direction="down", amount=3)
+    - Example: "double-click on file" → use open_file tool instead if it's a file
+
 17. BROWSER AUTOMATION RULES:
     - For SIMPLE "open website" commands (just viewing) → use open_browser (opens in user's real Chrome with their logged-in profile)
     - For "open X and search for Y" → use browser_search with url param: browser_search(query="Y", url="https://www.youtube.com"). This opens the site in Playwright, types in the search bar, and presses Enter.
@@ -282,6 +301,10 @@ def _plan_sync(user_command: str, user_id: str) -> dict:
     plan["requires_approval"] = _needs_approval(plan)
     plan["original_command"] = user_command
     plan["enhanced_command"] = enhanced_command
+
+    # Save to conversation history for multi-turn context
+    add_to_history(user_command, plan)
+
     return plan
 
 

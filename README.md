@@ -1,4 +1,4 @@
-# Cipher AI — Autonomous Voice-Controlled Desktop Agent
+# DesktopPilot AI — Autonomous Voice-Controlled Desktop Agent
 
 An AI-powered desktop assistant for Windows that executes natural language voice commands. Speak a command, review the plan, and watch it execute — opening apps, managing files, launching dev environments, automating browsers, and controlling system settings.
 
@@ -11,7 +11,7 @@ Built with **Amazon Bedrock (Nova Pro)**, **AWS Transcribe**, **DynamoDB**, **El
 ```
 You: "Open D drive and create a Vite React project called Dashboard"
 
-Cipher AI:
+DesktopPilot AI:
   ✓ Enhanced: "Create a Vite React project called Dashboard on D:/ drive"
   ✓ Plan: create_project(name="Dashboard", framework="vite", directory="D:/")
   ✓ Terminal opens → npm create vite → npm install → VS Code opens

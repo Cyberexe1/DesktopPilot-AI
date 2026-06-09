@@ -17,7 +17,12 @@ from controllers.file_controller import open_file
 from controllers.file_writer_controller import create_file, write_to_file, create_project
 from controllers.terminal_controller import run_in_terminal, open_vscode
 from controllers.settings_controller import open_setting
-from controllers.keyboard_controller import type_text, press_key
+from controllers.keyboard_controller import (
+    type_text, press_key, click_at,
+    right_click_at, double_click_at, move_mouse, move_mouse_relative,
+    scroll_at, drag_and_drop, get_mouse_position, get_screen_size,
+    smart_click, smart_right_click, smart_double_click
+)
 from controllers.screen_reader_controller import read_screen, read_screen_region, analyze_screen
 from controllers.form_filler_controller import fill_form, get_profile, update_profile
 from controllers.window_controller import (
@@ -279,6 +284,56 @@ async def execute_task(task: dict, user_id: str = "default", prev_tool: str = ""
         y = int(task.get("y", 0))
         from controllers.keyboard_controller import click_at
         return await loop.run_in_executor(None, click_at, x, y)
+
+    # ── Advanced Mouse Controls ───────────────────────────────────────────
+    elif tool == "right_click":
+        x = task.get("x")
+        y = task.get("y")
+        args = [int(x), int(y)] if x is not None and y is not None else []
+        return await loop.run_in_executor(None, right_click_at, *args)
+
+    elif tool == "double_click":
+        x = task.get("x")
+        y = task.get("y")
+        args = [int(x), int(y)] if x is not None and y is not None else []
+        return await loop.run_in_executor(None, double_click_at, *args)
+
+    elif tool == "move_mouse":
+        x = int(task.get("x", 0))
+        y = int(task.get("y", 0))
+        duration = float(task.get("duration", 0.3))
+        return await loop.run_in_executor(None, move_mouse, x, y, duration)
+
+    elif tool == "scroll":
+        x = task.get("x")
+        y = task.get("y")
+        amount = int(task.get("amount", 3))
+        direction = task.get("direction", "down")
+        if x is not None and y is not None:
+            return await loop.run_in_executor(None, scroll_at, int(x), int(y), amount, direction)
+        return await loop.run_in_executor(None, scroll_at, None, None, amount, direction)
+
+    elif tool == "drag_drop":
+        return await loop.run_in_executor(
+            None, drag_and_drop,
+            int(task.get("from_x", 0)), int(task.get("from_y", 0)),
+            int(task.get("to_x", 0)), int(task.get("to_y", 0)),
+        )
+
+    elif tool == "get_mouse_position":
+        return await loop.run_in_executor(None, get_mouse_position)
+
+    elif tool == "smart_click":
+        text = task.get("text", task.get("label", ""))
+        return await loop.run_in_executor(None, smart_click, text, "left")
+
+    elif tool == "smart_right_click":
+        text = task.get("text", task.get("label", ""))
+        return await loop.run_in_executor(None, smart_right_click, text)
+
+    elif tool == "smart_double_click":
+        text = task.get("text", task.get("label", ""))
+        return await loop.run_in_executor(None, smart_double_click, text)
 
     elif tool == "create_file":
         filename  = task.get("filename", "")

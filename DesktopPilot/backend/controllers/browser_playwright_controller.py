@@ -1,7 +1,7 @@
 """
 Browser Playwright Controller — full browser automation.
 Provides click, type, navigate, read page, fill forms, take page screenshots.
-Uses a PERSISTENT browser instance (stays open between commands).
+Uses a PERSISTENT browser profile (stays logged in between sessions).
 """
 
 import asyncio
@@ -17,78 +17,43 @@ log = logging.getLogger(__name__)
 # ── Persistent browser state ─────────────────────────────────────────────────
 
 _playwright = None
-_browser: Optional[Browser] = None
 _context: Optional[BrowserContext] = None
 _page: Optional[Page] = None
 
 _USER = os.environ.get("USERNAME", "User")
-USER_DATA_DIR = rf"C:\Users\{_USER}\AppData\Local\Google\Chrome\User Data"
 BROWSER_PROFILE = os.path.join(os.path.expanduser("~"), ".desktoppilot", "browser_data")
-CDP_PORT = 9222  # Chrome DevTools Protocol port
 
 
 async def _get_page() -> Page:
     """
-    Get or create the browser page.
-    Strategy:
-    1. Try connecting to user's running Chrome via CDP (same profile, same logins)
-    2. If Chrome CDP not available, LAUNCH Chrome with CDP flag automatically
-    3. Fallback: launch persistent Playwright profile
+    Get or create the persistent browser page.
+    Uses Chrome with a dedicated DesktopPilot profile folder.
+    Logins persist across restarts — log in once, stay logged in forever.
     """
-    global _playwright, _browser, _context, _page
+    global _playwright, _context, _page
 
     # Check if existing page is still valid
     if _page:
         try:
-            await _page.title()  # Quick check if page is still alive
+            await _page.title()
             return _page
         except Exception:
-            _page = None  # Page is dead, need a new one
+            log.info("Page stale — relaunching browser")
+            _page = None
+            try:
+                if _context:
+                    await _context.close()
+            except Exception:
+                pass
+            _context = None
 
     if not _playwright:
         _playwright = await async_playwright().start()
 
-    # Strategy 1: Connect to Chrome via CDP
-    if not _browser:
-        # First check if CDP is available
-        cdp_available = await _check_cdp_available()
-
-        if not cdp_available:
-            # Auto-launch Chrome with CDP
-            await _launch_chrome_with_cdp()
-            # Wait a moment for Chrome to start
-            import asyncio
-            await asyncio.sleep(3)
-
-        try:
-            _browser = await _playwright.chromium.connect_over_cdp(
-                f"http://localhost:{CDP_PORT}",
-                timeout=8000,
-            )
-            log.info("Connected to Chrome via CDP — using real profile!")
-        except Exception as e:
-            log.warning(f"CDP connection failed even after launch: {e}")
-            _browser = None
-
-    # If CDP connected, get or create a page
-    if _browser:
-        try:
-            contexts = _browser.contexts
-            if contexts:
-                _context = contexts[0]
-                # Create a new tab for DesktopPilot
-                _page = await _context.new_page()
-                log.info("Created new tab in user's Chrome via CDP")
-                return _page
-        except Exception as e:
-            log.warning(f"CDP page creation failed: {e}")
-            _browser = None
-            _context = None
-
-    # Strategy 2: Fallback — persistent Playwright profile
     if not _context:
         os.makedirs(BROWSER_PROFILE, exist_ok=True)
 
+        # Find Chrome executable
         chrome_paths = [
             rf"C:\Program Files\Google\Chrome\Application\chrome.exe",
             rf"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
@@ -102,6 +67,8 @@ async def _get_page() -> Page:
             "args": [
                 "--start-maximized",
                 "--disable-blink-features=AutomationControlled",
+                "--no-first-run",
+                "--no-default-browser-check",
             ],
             "no_viewport": True,
             "ignore_default_args": ["--enable-automation"],
@@ -111,65 +78,22 @@ async def _get_page() -> Page:
             launch_args["executable_path"] = chrome_exe
 
         _context = await _playwright.chromium.launch_persistent_context(**launch_args)
+        log.info(f"Playwright browser launched (profile: {BROWSER_PROFILE})")
 
+    # Get or create the page
+    if not _page or _page.is_closed():
         if _context.pages:
-            _page = _context.pages[0]
+            _page = _context.pages[-1]
         else:
             _page = await _context.new_page()
-
-        log.info("Playwright browser launched (persistent profile fallback)")
 
     return _page
 
 
-async def _check_cdp_available() -> bool:
-    """Check if Chrome CDP is available on port 9222."""
-    import urllib.request
-    try:
-        req = urllib.request.urlopen(f"http://localhost:{CDP_PORT}/json/version", timeout=2)
-        req.close()
-        return True
-    except Exception:
-        return False
-
-
-async def _launch_chrome_with_cdp():
-    """Kill existing Chrome and relaunch with CDP debugging enabled."""
-    import subprocess
-
-    # Kill any running Chrome first
-    try:
-        subprocess.run(["taskkill", "/f", "/im", "chrome.exe"],
-                      capture_output=True, timeout=5)
-    except Exception:
-        pass
-
-    import asyncio
-    await asyncio.sleep(2)
-
-    # Launch Chrome with remote debugging + user's profile
-    chrome_paths = [
-        rf"C:\Program Files\Google\Chrome\Application\chrome.exe",
-        rf"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
-        rf"C:\Users\{_USER}\AppData\Local\Google\Chrome\Application\chrome.exe",
-    ]
-    chrome_exe = next((p for p in chrome_paths if os.path.exists(p)), None)
-
-    if chrome_exe:
-        user_data = rf"C:\Users\{_USER}\AppData\Local\Google\Chrome\User Data"
-        subprocess.Popen([
-            chrome_exe,
-            f"--remote-debugging-port={CDP_PORT}",
-            f"--user-data-dir={user_data}",
-        ])
-        log.info(f"Launched Chrome with CDP on port {CDP_PORT}")
-    else:
-        log.error("Chrome not found — cannot launch with CDP")
-
 
 async def close_browser():
     """Close the Playwright browser."""
-    global _playwright, _browser, _context, _page
+    global _playwright, _context, _page
     try:
         if _context:
             await _context.close()
@@ -178,7 +102,6 @@ async def close_browser():
     except Exception:
         pass
     _playwright = None
-    _browser = None
     _context = None
     _page = None
     log.info("Playwright browser closed")

@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react'
-import { Mic, MicOff, Loader, CheckCircle, XCircle, Clock, ChevronRight, Send } from 'lucide-react'
+import React, { useState, useRef, useEffect } from 'react'
+import { Mic, MicOff, Loader, CheckCircle, XCircle, Clock, ChevronRight, Send, Radio } from 'lucide-react'
 import { useAgent } from '../context/AgentContext'
 import './VoicePanel.css'
 
@@ -8,6 +8,9 @@ const S = { IDLE:'idle', LISTENING:'listening', PROCESSING:'processing',
             DONE:'done', ERROR:'error', SPEAKING:'speaking' }
 
 const SENSITIVE = new Set(['run_terminal','compose_email','delete_file','open_setting'])
+
+// Wake word detection keywords
+const WAKE_WORDS = ['hey cipher', 'hi cipher', 'hello cipher', 'okay cipher', 'cipher']
 
 export default function VoicePanel() {
   const { transcribe, plan, execute, addLog, backendReady, credits } = useAgent()
@@ -18,8 +21,95 @@ export default function VoicePanel() {
   const [error, setError]       = useState('')
   const [chatText, setChatText] = useState('')
   const [lastOutput, setLastOutput] = useState('')
+  const [wakeMode, setWakeMode] = useState(false)
+  const [wakeListening, setWakeListening] = useState(false)
   const mediaRef  = useRef(null)
   const chunksRef = useRef([])
+  const wakeRef   = useRef(null)
+  const wakeChunksRef = useRef([])
+
+  /* ── Wake Word — always listening in background ── */
+  useEffect(() => {
+    if (!wakeMode || !backendReady) return
+    let active = true
+
+    const listenForWake = async () => {
+      if (!active || step !== S.IDLE) return
+      setWakeListening(true)
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+        const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' })
+        wakeRef.current = recorder
+        wakeChunksRef.current = []
+
+        recorder.ondataavailable = e => wakeChunksRef.current.push(e.data)
+        recorder.onstop = async () => {
+          stream.getTracks().forEach(t => t.stop())
+          setWakeListening(false)
+          if (!active) return
+
+          const blob = new Blob(wakeChunksRef.current, { type: 'audio/webm' })
+          try {
+            const text = await transcribe(blob)
+            const lower = text.toLowerCase().trim()
+
+            // Check if wake word was detected
+            const hasWake = WAKE_WORDS.some(w => lower.includes(w))
+            if (hasWake) {
+              // Remove wake word and process the rest as a command
+              let command = lower
+              for (const w of WAKE_WORDS) {
+                command = command.replace(w, '').trim()
+              }
+
+              if (command.length > 2) {
+                // Has a command after wake word — execute directly
+                addLog(`Wake word detected! Command: "${command}"`, 'success')
+                setTrans(command)
+                setStep(S.PLANNING)
+                const p = await plan(command)
+                setPlan(p)
+                addLog(`Plan: ${p.tasks?.length} step(s) — ${p.intent}`, 'success')
+                if (p.requires_approval) { setStep(S.APPROVING) }
+                else await runExec(p)
+              } else {
+                // Just wake word, no command — start full listening
+                addLog('Wake word detected! Listening...', 'success')
+                startListening()
+              }
+            } else {
+              // No wake word — continue listening
+              if (active && step === S.IDLE) {
+                setTimeout(listenForWake, 500)
+              }
+            }
+          } catch {
+            // Transcription failed (silence/noise) — keep listening
+            if (active && step === S.IDLE) {
+              setTimeout(listenForWake, 1000)
+            }
+          }
+        }
+
+        recorder.start()
+        // Record for 3 seconds, then check
+        setTimeout(() => {
+          if (recorder.state === 'recording') recorder.stop()
+        }, 3000)
+
+      } catch (e) {
+        setWakeListening(false)
+        if (active) setTimeout(listenForWake, 2000)
+      }
+    }
+
+    listenForWake()
+    return () => {
+      active = false
+      if (wakeRef.current?.state === 'recording') wakeRef.current.stop()
+    }
+  }, [wakeMode, backendReady, step])
 
   /* ── Recording ── */
   const startListening = async () => {
@@ -72,16 +162,22 @@ export default function VoicePanel() {
 
   const runExec = async (p) => {
     setStep(S.EXECUTING)
-    setExec(p.tasks.map(t => ({ label: taskLabel(t), status: 'pending' })))
+    const steps = p.tasks.map(t => ({ label: taskLabel(t), status: 'pending' }))
+    setExec(steps)
     addLog('Executing plan...', 'info')
     try {
       const results = await execute(p)
-      results.forEach((r, i) => {
+      // Animate each step with a small delay for visual effect
+      for (let i = 0; i < results.length; i++) {
         setExec(prev => prev.map((s, j) =>
-          j === i ? { ...s, status: r.success ? 'done' : 'failed' } : s
+          j === i ? { ...s, status: 'running' } : s
         ))
-        addLog(r.message, r.success ? 'success' : 'error')
-      })
+        await new Promise(r => setTimeout(r, 300)) // Brief "running" state
+        setExec(prev => prev.map((s, j) =>
+          j === i ? { ...s, status: results[i].success ? 'done' : 'failed' } : s
+        ))
+        addLog(results[i].message, results[i].success ? 'success' : 'error')
+      }
       // Show output for commands that produce text results
       const outputResult = results.find(r =>
         r.success && r.message && r.message.length > 30 && (
@@ -156,6 +252,14 @@ export default function VoicePanel() {
       <div className="panel-header">
         <span className="panel-title"><Mic size={15} className="panel-title-icon" /> Voice Command</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          {/* Wake word toggle */}
+          <button
+            className={`btn btn-ghost text-xs ${wakeMode ? 'wake-indicator--active' : ''}`}
+            onClick={() => setWakeMode(w => !w)}
+            title={wakeMode ? 'Wake word active — say "Hey Cipher"' : 'Enable wake word'}
+          >
+            <Radio size={12} /> {wakeMode ? 'Listening' : 'Wake Word'}
+          </button>
           {credits <= 10 && credits > 0 && (
             <span className="badge badge-yellow text-xs">⚡ {credits} left</span>
           )}
@@ -190,7 +294,7 @@ export default function VoicePanel() {
           </button>
 
           <p className="mic-hint text-sm text-muted">
-            {step === S.IDLE       && (!backendReady ? 'Waiting for backend...' : 'Click to speak')}
+            {step === S.IDLE       && (!backendReady ? 'Waiting for backend...' : wakeMode ? 'Say "Hey Cipher" to activate' : 'Click to speak')}
             {step === S.LISTENING  && 'Listening — click to stop'}
             {step === S.PROCESSING && 'Transcribing audio...'}
             {step === S.PLANNING   && 'Generating plan with Bedrock...'}
@@ -200,6 +304,14 @@ export default function VoicePanel() {
             {step === S.DONE       && 'Done! Click to run another command.'}
             {step === S.ERROR      && 'Something went wrong.'}
           </p>
+
+          {/* Wake word status indicator */}
+          {wakeMode && step === S.IDLE && (
+            <div className={`wake-indicator ${wakeListening ? 'wake-indicator--active' : ''}`}>
+              <span className="wake-dot" />
+              <span>{wakeListening ? 'Listening for "Hey Cipher"...' : 'Wake word active'}</span>
+            </div>
+          )}
         </div>
 
         {/* ── Chat input (text command) ── */}

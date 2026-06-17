@@ -4,6 +4,7 @@ DesktopPilot AI — FastAPI Backend (Phase 2)
 
 import logging
 import os
+import asyncio
 import time
 from contextlib import asynccontextmanager
 
@@ -69,6 +70,10 @@ async def lifespan(app: FastAPI):
     log.info("Project auto-discovery complete")
     start_file_watcher()
     log.info("File watcher started")
+    # Start clipboard monitor
+    from controllers.clipboard_manager_controller import start_clipboard_monitor
+    start_clipboard_monitor()
+    log.info("Clipboard monitor started")
     yield
     stop_file_watcher()
     log.info("DesktopPilot agent shut down")
@@ -196,22 +201,79 @@ async def execute(req: ExecuteRequest):
 
         for i, task in enumerate(tasks):
             tool = task.get("tool", "")
-            try:
-                message = await execute_task(task, req.user_id, prev_tool=prev_tool)
-                result = {"tool": tool, "success": True, "message": message}
-            except Exception as e:
-                result = {"tool": tool, "success": False, "message": f"Task '{tool}' failed: {e}"}
+            message = ""
+            success = False
 
+            # ── Execute with retry ──────────────────────────────────────────
+            for attempt in range(2):  # Try up to 2 times
+                try:
+                    message = await execute_task(task, req.user_id, prev_tool=prev_tool)
+                    success = True
+                    break  # Success — stop retrying
+                except Exception as e:
+                    err_msg = str(e)
+                    if attempt == 0:
+                        log.warning(f"Task '{tool}' failed (attempt 1): {err_msg} — retrying in 1s")
+                        await ws_manager.broadcast({
+                            "type": "step_retry",
+                            "index": i,
+                            "tool": tool,
+                            "message": f"Retrying: {err_msg[:60]}",
+                        })
+                        await asyncio.sleep(1.0)
+                    else:
+                        message = f"Task '{tool}' failed: {err_msg}"
+                        log.error(f"Task '{tool}' failed after retry: {err_msg}")
+
+            # ── Check if failure is critical (blocks remaining steps) ──────
+            if not success:
+                critical_tools = {"open_application", "open_project", "create_project",
+                                  "run_terminal", "browser_goto", "open_browser"}
+                is_critical = tool in critical_tools and i < len(tasks) - 1
+
+                # Try AI-suggested alternative if critical
+                if is_critical:
+                    alternative = _get_error_alternative(tool, task, message)
+                    if alternative:
+                        log.info(f"Trying alternative for '{tool}': {alternative}")
+                        try:
+                            message = await execute_task(alternative, req.user_id, prev_tool=prev_tool)
+                            success = True
+                            message = f"[Alternative] {message}"
+                        except Exception as e2:
+                            message = f"Task '{tool}' failed (alternative also failed): {e2}"
+
+            result = {"tool": tool, "success": success, "message": message}
             results.append(result)
-            prev_tool = tool  # Track for auto-wait logic
+            prev_tool = tool
 
             await ws_manager.broadcast({
                 "type": "step_update",
                 "index": i,
                 "tool": tool,
-                "success": result["success"],
-                "message": result["message"],
+                "success": success,
+                "message": message,
             })
+
+            # ── Stop execution if critical step failed ─────────────────────
+            if not success and tool in {"open_project", "create_project"}:
+                # Skip remaining steps that depend on this one
+                for j in range(i + 1, len(tasks)):
+                    skipped_tool = tasks[j].get("tool", "")
+                    skip_result = {
+                        "tool": skipped_tool,
+                        "success": False,
+                        "message": f"Skipped — previous step '{tool}' failed",
+                    }
+                    results.append(skip_result)
+                    await ws_manager.broadcast({
+                        "type": "step_update",
+                        "index": j,
+                        "tool": skipped_tool,
+                        "success": False,
+                        "message": skip_result["message"],
+                    })
+                break  # Stop the loop
 
         duration_ms = int((time.time() - start) * 1000)
         success_count = sum(1 for r in results if r["success"])
@@ -237,13 +299,17 @@ async def execute(req: ExecuteRequest):
         if not plan_has_speak:
             from controllers.voice_output_controller import speak
             if success_count == len(results) and results:
-                # Generate natural response based on what was done
                 speech = _generate_voice_response(results, intent)
                 speak(speech)
             elif success_count < len(results):
                 failed = [r for r in results if not r["success"]]
-                if failed:
-                    speak(f"Sorry Sir, I ran into a problem. {failed[0]['message'][:60]}")
+                skipped = [r for r in results if "Skipped" in r.get("message", "")]
+                if failed and not skipped:
+                    # Describe what failed and what worked
+                    fail_tool = failed[0]["tool"].replace("_", " ")
+                    speak(f"I completed {success_count} of {len(results)} steps, Sir. The {fail_tool} step ran into an issue. You may want to try again.")
+                elif skipped:
+                    speak(f"I stopped at step {success_count + 1} of {len(results)}, Sir — the remaining steps were skipped because a required step failed.")
                 else:
                     speak("I completed some steps but a few didn't work. Please check.")
 
@@ -428,6 +494,171 @@ async def auth_login(req: LoginRequest):
         err(result["error"], 401)
 
 
+# ──────────────────────────────────────────────────────────────────────────────
+# FEATURE 1 — AI MEETING ASSISTANT
+# ──────────────────────────────────────────────────────────────────────────────
+
+class MeetingStartRequest(BaseModel):
+    title: str = ""
+
+@app.post("/meeting/start")
+async def meeting_start(req: MeetingStartRequest):
+    from controllers.meeting_controller import start_meeting
+    try:
+        result = start_meeting(req.title)
+        return ok({"message": result})
+    except Exception as e:
+        err(str(e))
+
+@app.post("/meeting/stop")
+async def meeting_stop():
+    from controllers.meeting_controller import stop_meeting
+    try:
+        result = stop_meeting()
+        if "error" in result:
+            err(result["error"])
+        return ok(result)
+    except Exception as e:
+        err(str(e))
+
+class MeetingProcessRequest(BaseModel):
+    wav_path:      str
+    title:         str
+    send_email_to: str = ""
+
+@app.post("/meeting/process")
+async def meeting_process(req: MeetingProcessRequest):
+    from controllers.meeting_controller import process_meeting
+    try:
+        result = await process_meeting(req.wav_path, req.title, req.send_email_to)
+        await ws_manager.broadcast({"type": "meeting_processed", "result": result})
+        return ok(result)
+    except Exception as e:
+        err(str(e))
+
+@app.get("/meeting/status")
+async def meeting_status():
+    from controllers.meeting_controller import get_meeting_status
+    try:
+        return ok(get_meeting_status())
+    except Exception as e:
+        err(str(e))
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# FEATURE 5 — AI CLIPBOARD MANAGER
+# ──────────────────────────────────────────────────────────────────────────────
+
+@app.get("/clipboard/history")
+async def clipboard_history(limit: int = 30):
+    from controllers.clipboard_manager_controller import get_clipboard_history_smart
+    try:
+        return ok({"entries": get_clipboard_history_smart(limit)})
+    except Exception as e:
+        err(str(e))
+
+@app.get("/clipboard/status")
+async def clipboard_status():
+    from controllers.clipboard_manager_controller import get_monitor_status
+    try:
+        return ok(get_monitor_status())
+    except Exception as e:
+        err(str(e))
+
+class ClipboardQueryRequest(BaseModel):
+    query: str
+
+@app.post("/clipboard/query")
+async def clipboard_query(req: ClipboardQueryRequest):
+    from controllers.clipboard_manager_controller import ai_clipboard_query
+    try:
+        result = ai_clipboard_query(req.query)
+        return ok({"answer": result})
+    except Exception as e:
+        err(str(e))
+
+class ClipboardFilterRequest(BaseModel):
+    tag: str  # code | email | url | phone | address | text
+
+@app.post("/clipboard/filter")
+async def clipboard_filter(req: ClipboardFilterRequest):
+    from controllers.clipboard_manager_controller import find_clip_by_type
+    try:
+        return ok({"entries": find_clip_by_type(req.tag)})
+    except Exception as e:
+        err(str(e))
+
+class ClipboardPasteRequest(BaseModel):
+    entry_id: int
+
+@app.post("/clipboard/paste")
+async def clipboard_paste(req: ClipboardPasteRequest):
+    from controllers.clipboard_manager_controller import paste_clip
+    try:
+        result = paste_clip(req.entry_id)
+        return ok({"message": result})
+    except Exception as e:
+        err(str(e))
+
+@app.delete("/clipboard/history")
+async def clipboard_clear():
+    from controllers.clipboard_manager_controller import clear_clipboard_history
+    try:
+        return ok({"message": clear_clipboard_history()})
+    except Exception as e:
+        err(str(e))
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# FEATURE 6 — FOCUS MODE / POMODORO
+# ──────────────────────────────────────────────────────────────────────────────
+
+class FocusStartRequest(BaseModel):
+    duration_hours: float = 2.0
+    goal:           str   = ""
+    focus_min:      int   = 25
+    break_min:      int   = 5
+
+@app.post("/focus/start")
+async def focus_start(req: FocusStartRequest):
+    from controllers.focus_controller import start_focus_mode
+    try:
+        result = start_focus_mode(
+            req.duration_hours, req.goal, req.focus_min, req.break_min
+        )
+        return ok({"message": result})
+    except Exception as e:
+        err(str(e))
+
+@app.post("/focus/stop")
+async def focus_stop():
+    from controllers.focus_controller import stop_focus_mode
+    try:
+        result = stop_focus_mode()
+        if "error" in result:
+            err(result["error"])
+        await ws_manager.broadcast({"type": "focus_ended", "report": result})
+        return ok(result)
+    except Exception as e:
+        err(str(e))
+
+@app.get("/focus/status")
+async def focus_status_route():
+    from controllers.focus_controller import get_focus_status
+    try:
+        return ok(get_focus_status())
+    except Exception as e:
+        err(str(e))
+
+@app.get("/focus/sessions")
+async def focus_sessions():
+    from controllers.focus_controller import get_focus_sessions
+    try:
+        return ok({"sessions": get_focus_sessions()})
+    except Exception as e:
+        err(str(e))
+
+
 # ── Buy Credits ───────────────────────────────────────────────────────────────
 
 class BuyCreditsRequest(BaseModel):
@@ -472,6 +703,41 @@ async def buy_credits(req: BuyCreditsRequest):
 
 
 # ── Voice Response Generator ──────────────────────────────────────────────────
+
+def _get_error_alternative(tool: str, task: dict, error: str) -> dict | None:
+    """
+    Suggest an alternative task when a step fails.
+    Returns an alternative task dict, or None if no alternative exists.
+    """
+    error_lower = error.lower()
+
+    # App failed to open → try Windows Search
+    if tool == "open_application":
+        app_name = task.get("name", "")
+        if "not found" in error_lower or "failed" in error_lower:
+            return {"tool": "search_web", "query": f"open {app_name} download"}
+
+    # Browser navigation failed → try subprocess open
+    if tool == "browser_goto":
+        url = task.get("url", "")
+        if url:
+            return {"tool": "open_browser", "url": url}
+
+    # Project not found in registry → try opening Desktop
+    if tool == "open_project":
+        project = task.get("project", "")
+        if "not found" in error_lower:
+            return {"tool": "open_file", "name": project}
+
+    # Terminal command failed → open terminal without command
+    if tool == "run_terminal":
+        cmd = task.get("command", "")
+        if "blocked" in error_lower:
+            return None  # Safety block — don't retry
+        return {"tool": "open_application", "name": "Terminal"}
+
+    return None
+
 
 def _generate_voice_response(results: list, intent: str) -> str:
     """Generate natural, human-like voice response based on what was executed."""

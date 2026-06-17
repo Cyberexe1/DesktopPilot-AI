@@ -361,15 +361,130 @@ def _write(directory: str, filename: str, content: str):
 # ── Project scaffolders ───────────────────────────────────────────────────────
 
 def _create_docx(filepath: str, content: str):
-    """Create a proper .docx Word document."""
+    """Create a professionally formatted .docx Word document."""
     from docx import Document
+    from docx.shared import Inches, Pt, RGBColor
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.oxml.ns import qn
+    from docx.oxml import OxmlElement
+
     doc = Document()
-    # Split content by newlines and add as paragraphs
-    for line in content.split('\n'):
-        if line.strip():
-            doc.add_paragraph(line)
-        else:
-            doc.add_paragraph('')  # Empty paragraph for spacing
+
+    # ── Page margins ──
+    for section in doc.sections:
+        section.top_margin    = Inches(1.0)
+        section.bottom_margin = Inches(1.0)
+        section.left_margin   = Inches(1.2)
+        section.right_margin  = Inches(1.2)
+
+    # ── Default body style ──
+    style = doc.styles['Normal']
+    style.font.name = 'Calibri'
+    style.font.size = Pt(11)
+    style.paragraph_format.space_after = Pt(6)
+
+    lines = content.split('\n')
+
+    def _is_heading(line: str) -> bool:
+        """Detect heading lines — short, not starting with bullet, not lowercase start."""
+        line = line.strip()
+        if not line: return False
+        if line.startswith(('•', '-', '*', '·', '\t', '   ')): return False
+        if len(line) > 80: return False
+        return True
+
+    def _set_heading_style(para, level: int):
+        """Apply styled heading formatting."""
+        para.clear()
+        run = para.add_run(para.text if hasattr(para, '_element') else '')
+        colors = {1: RGBColor(0x1F, 0x39, 0x64), 2: RGBColor(0x2E, 0x74, 0xB5), 3: RGBColor(0x5B, 0x9B, 0xD5)}
+        sizes  = {1: Pt(20), 2: Pt(16), 3: Pt(13)}
+        para.style = f'Heading {level}'
+        para.paragraph_format.space_before = Pt(14 if level == 1 else 10)
+        para.paragraph_format.space_after  = Pt(4)
+
+    first_line = True
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        stripped = line.strip()
+
+        if not stripped:
+            i += 1
+            continue
+
+        # ── Title (first non-empty line) ──
+        if first_line and _is_heading(stripped):
+            first_line = False
+            para = doc.add_heading(stripped, level=0)
+            para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            run = para.runs[0] if para.runs else para.add_run(stripped)
+            run.font.color.rgb = RGBColor(0x1F, 0x39, 0x64)
+            run.font.size = Pt(22)
+            run.bold = True
+            # Add a decorative line below title
+            p = doc.add_paragraph()
+            p.paragraph_format.space_before = Pt(0)
+            p.paragraph_format.space_after  = Pt(12)
+            run = p.add_run('─' * 60)
+            run.font.color.rgb = RGBColor(0x2E, 0x74, 0xB5)
+            run.font.size = Pt(10)
+            i += 1
+            continue
+
+        first_line = False
+
+        # ── Section heading ──
+        if _is_heading(stripped) and len(stripped) < 60:
+            para = doc.add_heading(stripped, level=2)
+            para.paragraph_format.space_before = Pt(12)
+            para.paragraph_format.space_after  = Pt(4)
+            if para.runs:
+                para.runs[0].font.color.rgb = RGBColor(0x2E, 0x74, 0xB5)
+            i += 1
+            continue
+
+        # ── Bullet point ──
+        if stripped.startswith(('•', '-', '*', '·')):
+            bullet_text = stripped.lstrip('•-*· ').strip()
+            para = doc.add_paragraph(style='List Bullet')
+            para.paragraph_format.left_indent  = Inches(0.3)
+            para.paragraph_format.space_after  = Pt(3)
+            run = para.add_run(bullet_text)
+            run.font.name = 'Calibri'
+            run.font.size = Pt(11)
+            i += 1
+            continue
+
+        # ── "Dear Sir/Madam" → email greeting ──
+        if stripped.lower().startswith('dear'):
+            para = doc.add_paragraph()
+            para.paragraph_format.space_after = Pt(12)
+            run = para.add_run(stripped)
+            run.font.name = 'Calibri'
+            run.font.size = Pt(11)
+            i += 1
+            continue
+
+        # ── "Best regards" → closing ──
+        if any(stripped.lower().startswith(c) for c in ['best regards', 'sincerely', 'thank you', 'yours']):
+            para = doc.add_paragraph()
+            para.paragraph_format.space_before = Pt(12)
+            run = para.add_run(stripped)
+            run.font.name  = 'Calibri'
+            run.font.size  = Pt(11)
+            run.font.bold  = True
+            i += 1
+            continue
+
+        # ── Regular paragraph ──
+        para = doc.add_paragraph()
+        para.paragraph_format.space_after = Pt(6)
+        run = para.add_run(stripped)
+        run.font.name = 'Calibri'
+        run.font.size = Pt(11)
+        i += 1
+
     doc.save(filepath)
 
 
@@ -429,120 +544,221 @@ def _enrich_pptx_content(content: str, filename: str) -> str:
 
 
 def _create_pptx(filepath: str, content: str):
-    """Create a proper .pptx presentation — 70%+ slide coverage, rich content."""
+    """Create a professional dark-themed .pptx presentation."""
     from pptx import Presentation
-    from pptx.util import Inches, Pt
+    from pptx.util import Inches, Pt, Emu
     from pptx.dml.color import RGBColor
     from pptx.enum.text import PP_ALIGN
 
+    # ── Color palette (modern dark theme) ──
+    DARK_BG    = RGBColor(0x0F, 0x29, 0x44)   # Deep navy
+    ACCENT1    = RGBColor(0x00, 0xB0, 0xF0)   # Bright cyan
+    ACCENT2    = RGBColor(0xFF, 0xC0, 0x00)   # Gold
+    WHITE      = RGBColor(0xFF, 0xFF, 0xFF)
+    LIGHT_GRAY = RGBColor(0xCC, 0xDD, 0xEE)
+    SLIDE_W    = Inches(13.33)
+    SLIDE_H    = Inches(7.5)
+
     prs = Presentation()
+    prs.slide_width  = SLIDE_W
+    prs.slide_height = SLIDE_H
 
     lines = [l.strip() for l in content.split('\n') if l.strip()]
     if not lines:
-        lines = ["Presentation created by DesktopPilot AI"]
+        lines = ["Presentation"]
 
-    # Check for flowchart
     full_text = content.lower()
-    has_flowchart = any(kw in full_text for kw in ['flowchart', 'flow chart', 'diagram', 'process flow', 'steps:'])
+    has_flowchart = any(kw in full_text for kw in ['flowchart', 'flow chart', 'diagram', 'process flow'])
 
-    # Separate content from flowchart keywords
-    content_lines = []
-    for line in lines:
-        if line.lower() in ['flowchart', 'flow chart', 'diagram', 'process flow', 'steps:']:
-            continue
-        content_lines.append(line)
+    content_lines = [l for l in lines if l.lower() not in ['flowchart', 'flow chart', 'diagram', 'process flow', 'steps:']]
 
-    # ── Slide 1: Title slide ──
-    title = content_lines[0] if content_lines else "Untitled"
-    subtitle = content_lines[1] if len(content_lines) > 1 else "Created by DesktopPilot AI"
+    # ── Helper: dark background for any slide ──
+    def _dark_bg(slide):
+        from pptx.util import Inches
+        bg = slide.background
+        fill = bg.fill
+        fill.solid()
+        fill.fore_color.rgb = DARK_BG
 
-    slide = prs.slides.add_slide(prs.slide_layouts[0])
-    slide.shapes.title.text = title
-    if slide.placeholders[1]:
-        slide.placeholders[1].text = subtitle
+    # ── Helper: add text box ──
+    def _textbox(slide, text, left, top, width, height,
+                 size=Pt(18), bold=False, color=WHITE, align=PP_ALIGN.LEFT, italic=False):
+        txBox = slide.shapes.add_textbox(left, top, width, height)
+        tf = txBox.text_frame
+        tf.word_wrap = True
+        p = tf.paragraphs[0]
+        p.alignment = align
+        run = p.add_run()
+        run.text = text
+        run.font.size = size
+        run.font.bold = bold
+        run.font.italic = italic
+        run.font.color.rgb = color
+        return txBox
 
-    # ── Content slides — dense, 5-7 bullets per slide ──
-    remaining = content_lines[2:] if len(content_lines) > 2 else []
-
-    # Group lines: first line of each group is title, rest are bullets
-    # Strategy: every line that looks like a heading starts a new slide
-    slides_data = []
-    current_slide = {"title": "", "bullets": []}
-
-    for line in remaining:
-        # Detect if line is a heading (no bullet marker, shorter, capitalized)
-        is_heading = (
-            not line.startswith(('•', '-', '*', '·')) and
-            len(line) < 60 and
-            not line[0].islower() if line else False
+    # ── Helper: accent bar ──
+    def _accent_bar(slide, color=ACCENT1, width_frac=0.15):
+        from pptx.enum.shapes import MSO_SHAPE
+        bar = slide.shapes.add_shape(
+            MSO_SHAPE.RECTANGLE,
+            Inches(0), Inches(0), Inches(13.33 * width_frac), SLIDE_H
         )
+        bar.fill.solid()
+        bar.fill.fore_color.rgb = color
+        bar.line.fill.background()
+        return bar
 
-        if is_heading and current_slide["title"]:
-            # Save current slide and start new one
-            slides_data.append(current_slide)
-            current_slide = {"title": line, "bullets": []}
-        elif is_heading and not current_slide["title"]:
-            current_slide["title"] = line
+    # ── Helper: horizontal rule ──
+    def _hrule(slide, top, color=ACCENT1):
+        from pptx.enum.shapes import MSO_SHAPE
+        rule = slide.shapes.add_shape(
+            MSO_SHAPE.RECTANGLE,
+            Inches(1.2), top, Inches(10.9), Pt(3)
+        )
+        rule.fill.solid()
+        rule.fill.fore_color.rgb = color
+        rule.line.fill.background()
+
+    # ── Parse slides data ──
+    title_text    = content_lines[0] if content_lines else "Presentation"
+    subtitle_text = content_lines[1] if len(content_lines) > 1 else "Created by Cipher AI"
+    remaining     = content_lines[2:] if len(content_lines) > 2 else []
+
+    slides_data = []
+    current     = {"title": "", "bullets": []}
+    for line in remaining:
+        is_head = (
+            not line.startswith(('•', '-', '*', '·')) and
+            len(line) < 65 and
+            (line[0].isupper() if line else False)
+        )
+        if is_head and current["title"]:
+            slides_data.append(current)
+            current = {"title": line, "bullets": []}
+        elif is_head:
+            current["title"] = line
         else:
-            # It's a bullet point
-            bullet = line.lstrip('•-*· ')
-            if bullet:
-                current_slide["bullets"].append(bullet)
+            b = line.lstrip('•-*· ').strip()
+            if b:
+                current["bullets"].append(b)
 
-    # Don't forget the last slide
-    if current_slide["title"] or current_slide["bullets"]:
-        slides_data.append(current_slide)
+    if current["title"] or current["bullets"]:
+        slides_data.append(current)
 
-    # If no structured slides found, split remaining into chunks of 5
     if not slides_data and remaining:
         for i in range(0, len(remaining), 5):
             chunk = remaining[i:i+5]
             slides_data.append({
-                "title": chunk[0],
-                "bullets": chunk[1:] if len(chunk) > 1 else ["Content for this section"]
+                "title":   chunk[0],
+                "bullets": chunk[1:] or ["Details for this section"]
             })
 
-    # Create each content slide (cap at 8 content slides)
-    for sd in slides_data[:8]:
-        slide = prs.slides.add_slide(prs.slide_layouts[1])
-        slide.shapes.title.text = sd["title"] or "Content"
+    # ════════════════════════════════════════════════════
+    # SLIDE 1 — Title slide
+    # ════════════════════════════════════════════════════
+    slide = prs.slides.add_slide(prs.slide_layouts[6])  # Blank
+    _dark_bg(slide)
 
-        # Fill the body with bullets
-        body = slide.placeholders[1]
-        tf = body.text_frame
-        tf.clear()
+    # Left accent bar
+    _accent_bar(slide, ACCENT1, 0.04)
 
-        for i, bullet in enumerate(sd["bullets"]):
-            if i == 0:
-                tf.text = bullet
-            else:
-                p = tf.add_paragraph()
-                p.text = bullet
-            # Style each paragraph
-            para = tf.paragraphs[i]
-            para.font.size = Pt(16)
-            para.space_after = Pt(8)
+    # Large title
+    _textbox(slide, title_text,
+             Inches(1.0), Inches(2.0), Inches(11.0), Inches(2.0),
+             size=Pt(40), bold=True, color=WHITE, align=PP_ALIGN.CENTER)
 
-    # ── Flowchart slide ──
+    # Horizontal rule
+    _hrule(slide, Inches(4.2), ACCENT1)
+
+    # Subtitle
+    _textbox(slide, subtitle_text,
+             Inches(1.0), Inches(4.5), Inches(11.0), Inches(1.0),
+             size=Pt(20), color=ACCENT1, align=PP_ALIGN.CENTER, italic=True)
+
+    # Footer
+    _textbox(slide, "Cipher AI  •  DesktopPilot",
+             Inches(0.5), Inches(6.8), Inches(12.0), Inches(0.5),
+             size=Pt(10), color=LIGHT_GRAY, align=PP_ALIGN.CENTER)
+
+    # ════════════════════════════════════════════════════
+    # CONTENT SLIDES
+    # ════════════════════════════════════════════════════
+    for idx, sd in enumerate(slides_data[:8]):
+        slide = prs.slides.add_slide(prs.slide_layouts[6])
+        _dark_bg(slide)
+
+        # Thin left accent bar
+        _accent_bar(slide, ACCENT1 if idx % 2 == 0 else ACCENT2, 0.012)
+
+        # Slide number badge
+        _textbox(slide, f"{idx + 1:02d}",
+                 Inches(11.8), Inches(0.15), Inches(1.2), Inches(0.5),
+                 size=Pt(11), bold=True, color=ACCENT1, align=PP_ALIGN.RIGHT)
+
+        # Section title
+        _textbox(slide, sd["title"] or "Content",
+                 Inches(0.5), Inches(0.25), Inches(11.5), Inches(0.9),
+                 size=Pt(28), bold=True, color=WHITE)
+
+        # Accent rule under title
+        _hrule(slide, Inches(1.25), ACCENT1 if idx % 2 == 0 else ACCENT2)
+
+        # Bullets
+        bullets = sd["bullets"][:7]  # Max 7 bullets
+        if bullets:
+            bullet_top = Inches(1.5)
+            spacing    = (SLIDE_H - bullet_top - Inches(0.5)) / max(len(bullets), 1)
+            spacing    = min(spacing, Inches(0.75))
+
+            for j, bullet in enumerate(bullets):
+                y = bullet_top + (j * spacing)
+
+                # Bullet dot
+                from pptx.enum.shapes import MSO_SHAPE
+                dot = slide.shapes.add_shape(
+                    MSO_SHAPE.OVAL,
+                    Inches(0.45), y + Inches(0.15), Inches(0.12), Inches(0.12)
+                )
+                dot.fill.solid()
+                dot.fill.fore_color.rgb = ACCENT1 if idx % 2 == 0 else ACCENT2
+                dot.line.fill.background()
+
+                # Bullet text
+                _textbox(slide, bullet,
+                         Inches(0.7), y, Inches(12.0), spacing,
+                         size=Pt(16), color=LIGHT_GRAY)
+
+        # Slide footer
+        _textbox(slide, title_text,
+                 Inches(0.5), Inches(7.15), Inches(12.0), Inches(0.3),
+                 size=Pt(9), color=RGBColor(0x55, 0x77, 0x99), align=PP_ALIGN.CENTER)
+
+    # ════════════════════════════════════════════════════
+    # FLOWCHART SLIDE
+    # ════════════════════════════════════════════════════
     if has_flowchart:
-        steps = remaining if remaining else ["Step 1", "Step 2", "Step 3", "Step 4", "Step 5"]
-        # Use headings as flowchart steps if available
-        if slides_data:
-            steps = [sd["title"] for sd in slides_data if sd["title"]]
+        steps = [sd["title"] for sd in slides_data if sd["title"]] or \
+                ["Start", "Process", "Analysis", "Output", "End"]
         _add_flowchart_slide(prs, steps)
 
-    # Ensure minimum 3 content slides
-    while len(prs.slides) < 4:
-        slide = prs.slides.add_slide(prs.slide_layouts[1])
-        slide.shapes.title.text = f"Additional Details"
-        body = slide.placeholders[1]
-        body.text = "• More information can be added here\n• Supporting data and examples\n• References and resources"
+    # ════════════════════════════════════════════════════
+    # THANK YOU SLIDE
+    # ════════════════════════════════════════════════════
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    _dark_bg(slide)
+    _accent_bar(slide, ACCENT2, 0.04)
 
-    # Hard limit: max 10 slides total
-    while len(prs.slides) > 10:
-        rId = prs.slides._sldIdLst[-1].rId
-        prs.part.drop_rel(rId)
-        del prs.slides._sldIdLst[-1]
+    _textbox(slide, "Thank You",
+             Inches(1.0), Inches(2.5), Inches(11.0), Inches(1.5),
+             size=Pt(48), bold=True, color=WHITE, align=PP_ALIGN.CENTER)
+
+    _hrule(slide, Inches(4.2), ACCENT2)
+
+    _textbox(slide, "Questions & Discussion",
+             Inches(1.0), Inches(4.5), Inches(11.0), Inches(0.8),
+             size=Pt(20), color=ACCENT1, align=PP_ALIGN.CENTER, italic=True)
+
+    prs.save(filepath)
 
     prs.save(filepath)
 

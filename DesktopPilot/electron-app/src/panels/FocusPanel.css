@@ -1,0 +1,193 @@
+.focus-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: center;
+  padding-bottom: 1.5rem;
+}
+
+/* ── Active ── */
+.focus-active {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.1rem;
+  padding: 2rem 1rem 1rem;
+  width: 100%;
+  animation: fadeInUp var(--dur-base) var(--ease-out) both;
+}
+
+.focus-mode-badge {
+  padding: 0.3rem 1rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+.badge-focus {
+  background: rgba(204,34,0,0.15);
+  color: var(--accent2);
+  border: 1px solid rgba(204,34,0,0.35);
+  box-shadow: 0 0 12px rgba(204,34,0,0.2);
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+.badge-break {
+  background: rgba(255,255,255,0.06);
+  color: var(--text2);
+  border: 1px solid var(--border2);
+}
+
+/* SVG ring timer */
+.focus-ring-wrap {
+  position: relative;
+  width: 160px; height: 160px;
+}
+.focus-ring-svg {
+  width: 100%; height: 100%;
+  transform: rotate(-90deg);
+}
+.focus-ring-track {
+  fill: none;
+  stroke: #1a1a1a;
+  stroke-width: 8;
+}
+.focus-ring-fill {
+  fill: none;
+  stroke-width: 8;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1s linear;
+}
+.ring-focus { stroke: var(--accent2); filter: drop-shadow(0 0 6px rgba(255,51,34,0.5)); }
+.ring-break { stroke: #444444; }
+
+.focus-ring-content {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+}
+
+.focus-time {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--text);
+  font-family: 'Consolas', monospace;
+  letter-spacing: 0.02em;
+}
+
+.focus-goal {
+  text-align: center;
+  font-style: italic;
+}
+
+.focus-stop-btn {
+  padding: 0.55rem 1.5rem;
+}
+
+/* ── Setup ── */
+.focus-setup {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  animation: fadeInUp var(--dur-base) var(--ease-out) both;
+}
+
+.focus-config {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.focus-config-row {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.focus-config-field {
+  flex: 1;
+  min-width: 80px;
+}
+
+/* Stepper */
+.focus-stepper {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.3rem;
+}
+.stepper-btn {
+  width: 26px; height: 26px;
+  border-radius: var(--radius-sm);
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background var(--dur-fast), border-color var(--dur-fast);
+  line-height: 1;
+}
+.stepper-btn:hover { background: var(--surface3); border-color: var(--accent2); }
+.stepper-val {
+  flex: 1;
+  text-align: center;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+  font-family: 'Consolas', monospace;
+}
+
+.focus-calc {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: var(--radius-sm);
+  background: rgba(204,34,0,0.06);
+  border: 1px solid rgba(204,34,0,0.15);
+}
+
+.focus-blocked-info {
+  text-align: center;
+}
+
+.focus-start-btn {
+  width: 100%;
+  justify-content: center;
+  padding: 0.65rem;
+  font-size: 0.88rem;
+}
+
+/* ── History ── */
+.focus-history {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.session-card {
+  padding: 0.7rem 0.85rem;
+  animation: fadeInUp var(--dur-base) var(--ease-out) both;
+}
+
+.session-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.session-stats {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}

@@ -3,14 +3,31 @@ import { Mic, MicOff, Loader, CheckCircle, XCircle, Clock, ChevronRight, Send, R
 import { useAgent } from '../context/AgentContext'
 import './VoicePanel.css'
 
-const S = { IDLE:'idle', LISTENING:'listening', PROCESSING:'processing',
-            PLANNING:'planning', APPROVING:'approving', EXECUTING:'executing',
-            DONE:'done', ERROR:'error', SPEAKING:'speaking' }
+const S = {
+  IDLE:'idle', LISTENING:'listening', PROCESSING:'processing',
+  PLANNING:'planning', APPROVING:'approving', EXECUTING:'executing',
+  DONE:'done', ERROR:'error', SPEAKING:'speaking'
+}
 
 const SENSITIVE = new Set(['run_terminal','compose_email','delete_file','open_setting'])
-
-// Wake word detection keywords
 const WAKE_WORDS = ['hey cipher', 'hi cipher', 'hello cipher', 'okay cipher', 'cipher']
+
+// Typewriter hook — reveals text char by char
+function useTypewriter(text, speed = 22) {
+  const [displayed, setDisplayed] = useState('')
+  useEffect(() => {
+    if (!text) { setDisplayed(''); return }
+    setDisplayed('')
+    let i = 0
+    const timer = setInterval(() => {
+      i++
+      setDisplayed(text.slice(0, i))
+      if (i >= text.length) clearInterval(timer)
+    }, speed)
+    return () => clearInterval(timer)
+  }, [text, speed])
+  return displayed
+}
 
 export default function VoicePanel() {
   const { transcribe, plan, execute, addLog, backendReady, credits } = useAgent()
@@ -23,82 +40,68 @@ export default function VoicePanel() {
   const [lastOutput, setLastOutput] = useState('')
   const [wakeMode, setWakeMode] = useState(false)
   const [wakeListening, setWakeListening] = useState(false)
-  const mediaRef  = useRef(null)
-  const chunksRef = useRef([])
-  const wakeRef   = useRef(null)
+  const mediaRef      = useRef(null)
+  const chunksRef     = useRef([])
+  const wakeRef       = useRef(null)
   const wakeChunksRef = useRef([])
+  const stepRef       = useRef(S.IDLE)
 
-  /* ── Wake Word — always listening in background ── */
+  const typedTranscript = useTypewriter(transcript, 20)
+
+  useEffect(() => { stepRef.current = step }, [step])
+
+  /* ── Wake Word ── */
   useEffect(() => {
     if (!wakeMode || !backendReady) return
     let active = true
 
     const listenForWake = async () => {
-      if (!active || step !== S.IDLE) return
+      if (!active || stepRef.current !== S.IDLE) {
+        if (active) setTimeout(listenForWake, 1000)
+        return
+      }
       setWakeListening(true)
-
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
         const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' })
         wakeRef.current = recorder
         wakeChunksRef.current = []
-
         recorder.ondataavailable = e => wakeChunksRef.current.push(e.data)
         recorder.onstop = async () => {
           stream.getTracks().forEach(t => t.stop())
           setWakeListening(false)
           if (!active) return
-
           const blob = new Blob(wakeChunksRef.current, { type: 'audio/webm' })
           try {
             const text = await transcribe(blob)
             const lower = text.toLowerCase().trim()
-
-            // Check if wake word was detected
             const hasWake = WAKE_WORDS.some(w => lower.includes(w))
             if (hasWake) {
-              // Remove wake word and process the rest as a command
               let command = lower
-              for (const w of WAKE_WORDS) {
-                command = command.replace(w, '').trim()
-              }
-
+              for (const w of WAKE_WORDS) command = command.replace(w, '').trim()
               if (command.length > 2) {
-                // Has a command after wake word — execute directly
                 addLog(`Wake word detected! Command: "${command}"`, 'success')
                 setTrans(command)
                 setStep(S.PLANNING)
                 const p = await plan(command)
                 setPlan(p)
                 addLog(`Plan: ${p.tasks?.length} step(s) — ${p.intent}`, 'success')
-                if (p.requires_approval) { setStep(S.APPROVING) }
+                if (p.requires_approval) setStep(S.APPROVING)
                 else await runExec(p)
               } else {
-                // Just wake word, no command — start full listening
                 addLog('Wake word detected! Listening...', 'success')
                 startListening()
               }
             } else {
-              // No wake word — continue listening
-              if (active && step === S.IDLE) {
-                setTimeout(listenForWake, 500)
-              }
+              if (active) setTimeout(listenForWake, 300)
             }
           } catch {
-            // Transcription failed (silence/noise) — keep listening
-            if (active && step === S.IDLE) {
-              setTimeout(listenForWake, 1000)
-            }
+            if (active) setTimeout(listenForWake, 1000)
           }
         }
-
         recorder.start()
-        // Record for 3 seconds, then check
-        setTimeout(() => {
-          if (recorder.state === 'recording') recorder.stop()
-        }, 3000)
-
-      } catch (e) {
+        setTimeout(() => { if (recorder.state === 'recording') recorder.stop() }, 3000)
+      } catch {
         setWakeListening(false)
         if (active) setTimeout(listenForWake, 2000)
       }
@@ -107,9 +110,10 @@ export default function VoicePanel() {
     listenForWake()
     return () => {
       active = false
-      if (wakeRef.current?.state === 'recording') wakeRef.current.stop()
+      setWakeListening(false)
+      try { if (wakeRef.current?.state === 'recording') wakeRef.current.stop() } catch {}
     }
-  }, [wakeMode, backendReady, step])
+  }, [wakeMode, backendReady]) // eslint-disable-line
 
   /* ── Recording ── */
   const startListening = async () => {
@@ -146,13 +150,11 @@ export default function VoicePanel() {
       const text = await transcribe(blob)
       setTrans(text)
       addLog(`Transcript: "${text}"`, 'success')
-
       setStep(S.PLANNING)
       addLog('Generating plan via Amazon Bedrock...', 'info')
       const p = await plan(text)
       setPlan(p)
       addLog(`Plan: ${p.tasks?.length} step(s) — ${p.intent}`, 'success')
-
       if (p.requires_approval) { setStep(S.APPROVING); addLog('Approval required', 'warning') }
       else await runExec(p)
     } catch (e) {
@@ -167,44 +169,35 @@ export default function VoicePanel() {
     addLog('Executing plan...', 'info')
     try {
       const results = await execute(p)
-      // Animate each step with a small delay for visual effect
       for (let i = 0; i < results.length; i++) {
+        setExec(prev => prev.map((s, j) => j === i ? { ...s, status: 'running' } : s))
+        await new Promise(r => setTimeout(r, 300))
         setExec(prev => prev.map((s, j) =>
-          j === i ? { ...s, status: 'running' } : s
-        ))
-        await new Promise(r => setTimeout(r, 300)) // Brief "running" state
-        setExec(prev => prev.map((s, j) =>
-          j === i ? { ...s, status: results[i].success ? 'done' : 'failed' } : s
+          j === i
+            ? { ...s,
+                status: results[i].success ? 'done' : 'failed',
+                label: results[i].message?.startsWith('[Alternative]') ? `↪ ${prev[j].label}` : prev[j].label
+              }
+            : s
         ))
         addLog(results[i].message, results[i].success ? 'success' : 'error')
       }
-      // Show output for commands that produce text results
       const outputResult = results.find(r =>
         r.success && r.message && r.message.length > 30 && (
-          r.message.includes('Output:') ||
-          r.message.includes('Battery:') ||
-          r.message.includes('RAM:') ||
-          r.message.includes('Local IP:') ||
-          r.message.includes('CPU:') ||
-          r.message.includes('Disk') ||
-          r.message.includes('Open windows') ||
-          r.message.includes('Clipboard:') ||
-          r.message.includes('Timer started:') ||
-          r.message.includes('Reply') ||
-          r.message.includes('Screen text') ||
-          r.message.includes('Profile:') ||
-          r.message.includes('Copied') ||
-          r.message.includes('Code saved')
+          r.message.includes('Output:') || r.message.includes('Battery:') ||
+          r.message.includes('RAM:')    || r.message.includes('Local IP:') ||
+          r.message.includes('CPU:')    || r.message.includes('Disk') ||
+          r.message.includes('Open windows') || r.message.includes('Clipboard:') ||
+          r.message.includes('Timer started:') || r.message.includes('Reply') ||
+          r.message.includes('Screen text') || r.message.includes('Profile:') ||
+          r.message.includes('Copied') || r.message.includes('Code saved')
         )
       )
-      if (outputResult) {
-        setLastOutput(outputResult.message)
-      }
-      // Show speaking animation briefly when agent responds with voice
+      if (outputResult) setLastOutput(outputResult.message)
       const hasSpeakTask = p.tasks.some(t => t.tool === 'speak')
       if (hasSpeakTask || results.length > 0) {
         setStep(S.SPEAKING)
-        setTimeout(() => setStep(S.DONE), 3000) // Show speaking for 3s
+        setTimeout(() => setStep(S.DONE), 3000)
       } else {
         setStep(S.DONE)
       }
@@ -214,27 +207,26 @@ export default function VoicePanel() {
     }
   }
 
-  const reset = () => { setStep(S.IDLE); setTrans(''); setPlan(null); setExec([]); setError(''); setChatText(''); setLastOutput('') }
+  const reset = () => {
+    setStep(S.IDLE); setTrans(''); setPlan(null)
+    setExec([]); setError(''); setChatText(''); setLastOutput('')
+  }
 
-  /* ── Chat input submit (text command instead of voice) ── */
   const handleChatSubmit = async (e) => {
     e.preventDefault()
     const text = chatText.trim()
     if (!text || !backendReady) return
     if (credits === 0) { setError('No credits remaining.'); return }
-
     setChatText('')
     setTrans(text)
     setStep(S.PLANNING)
     setPlan(null); setExec([]); setError(''); setLastOutput('')
     addLog(`Text command: "${text}"`, 'info')
-
     try {
       addLog('Generating plan via Amazon Bedrock...', 'info')
       const p = await plan(text)
       setPlan(p)
       addLog(`Plan: ${p.tasks?.length} step(s) — ${p.intent}`, 'success')
-
       if (p.requires_approval) { setStep(S.APPROVING); addLog('Approval required', 'warning') }
       else await runExec(p)
     } catch (e) {
@@ -242,17 +234,39 @@ export default function VoicePanel() {
     }
   }
 
-  const isListening  = step === S.LISTENING
-  const isBusy       = [S.PROCESSING, S.PLANNING, S.EXECUTING].includes(step)
-  const isApproving  = step === S.APPROVING
-  const isSpeaking   = step === S.SPEAKING
+  const isListening = step === S.LISTENING
+  const isBusy      = [S.PROCESSING, S.PLANNING, S.EXECUTING].includes(step)
+  const isApproving = step === S.APPROVING
+  const isSpeaking  = step === S.SPEAKING
+
+  const micClass = [
+    'mic-btn',
+    isListening          ? 'mic-listening' : '',
+    isBusy               ? 'mic-busy'      : '',
+    step === S.DONE      ? 'mic-done'      : '',
+    step === S.ERROR     ? 'mic-error'     : '',
+    isSpeaking           ? 'mic-speaking'  : '',
+  ].filter(Boolean).join(' ')
+
+  const hintText = {
+    [S.IDLE]:       !backendReady ? 'Waiting for backend...' : wakeMode ? 'Say "Hey Cipher" to activate' : 'Click to speak',
+    [S.LISTENING]:  'Listening — click to stop',
+    [S.PROCESSING]: 'Transcribing audio...',
+    [S.PLANNING]:   'Generating plan with Bedrock...',
+    [S.APPROVING]:  'Review the plan below',
+    [S.EXECUTING]:  'Executing on your desktop...',
+    [S.SPEAKING]:   'Cipher is responding...',
+    [S.DONE]:       'Done! Click to run another command.',
+    [S.ERROR]:      'Something went wrong.',
+  }[step] || ''
 
   return (
     <div className="panel voice-panel">
       <div className="panel-header">
-        <span className="panel-title"><Mic size={15} className="panel-title-icon" /> Voice Command</span>
+        <span className="panel-title">
+          <Mic size={15} className="panel-title-icon" /> Voice Command
+        </span>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          {/* Wake word toggle */}
           <button
             className={`btn btn-ghost text-xs ${wakeMode ? 'wake-indicator--active' : ''}`}
             onClick={() => setWakeMode(w => !w)}
@@ -267,45 +281,50 @@ export default function VoicePanel() {
             <span className="badge badge-red text-xs">No credits</span>
           )}
           {(step === S.DONE || step === S.ERROR) && (
-            <button className="btn btn-ghost text-sm" onClick={reset}>↺ New command</button>
+            <button className="btn btn-ghost text-sm" onClick={reset}>↺ New</button>
           )}
         </div>
       </div>
 
       <div className="panel-body voice-body">
-        {/* ── Mic button ── */}
+
+        {/* ── Mic orb ── */}
         <div className="mic-section">
-          <button
-            className={`mic-btn ${isListening ? 'mic-listening' : ''} ${isBusy ? 'mic-busy' : ''} ${step === S.DONE ? 'mic-done' : ''} ${step === S.ERROR ? 'mic-error' : ''} ${isSpeaking ? 'mic-speaking' : ''}`}
-            onClick={isListening ? stopListening : startListening}
-            disabled={isBusy || isApproving || isSpeaking}
-          >
-            {isBusy
-              ? <Loader size={44} className="spin" />
-              : isListening
-                ? <MicOff size={44} />
-                : <Mic size={44} />
-            }
-            {isListening && <span className="pulse-ring" />}
-            {isListening && <span className="pulse-ring pulse-ring-2" />}
-            {isSpeaking && <span className="speak-ring" />}
-            {isSpeaking && <span className="speak-ring speak-ring-2" />}
-            {isSpeaking && <span className="speak-ring speak-ring-3" />}
-          </button>
+          <div className="mic-orb-wrap">
+            <button
+              className={micClass}
+              onClick={isListening ? stopListening : startListening}
+              disabled={isBusy || isApproving || isSpeaking}
+            >
+              {/* inner content */}
+              {isBusy ? (
+                <Loader size={40} className="spin" />
+              ) : isSpeaking ? (
+                <div className="wave-bars">
+                  <span className="wave-bar" />
+                  <span className="wave-bar" />
+                  <span className="wave-bar" />
+                  <span className="wave-bar" />
+                  <span className="wave-bar" />
+                </div>
+              ) : isListening ? (
+                <MicOff size={40} />
+              ) : (
+                <Mic size={40} />
+              )}
 
-          <p className="mic-hint text-sm text-muted">
-            {step === S.IDLE       && (!backendReady ? 'Waiting for backend...' : wakeMode ? 'Say "Hey Cipher" to activate' : 'Click to speak')}
-            {step === S.LISTENING  && 'Listening — click to stop'}
-            {step === S.PROCESSING && 'Transcribing audio...'}
-            {step === S.PLANNING   && 'Generating plan with Bedrock...'}
-            {step === S.APPROVING  && 'Review the plan below'}
-            {step === S.EXECUTING  && 'Executing on your desktop...'}
-            {step === S.SPEAKING   && '🔊 Cipher is speaking...'}
-            {step === S.DONE       && 'Done! Click to run another command.'}
-            {step === S.ERROR      && 'Something went wrong.'}
-          </p>
+              {/* rings */}
+              {isListening && <span className="pulse-ring" />}
+              {isListening && <span className="pulse-ring pulse-ring-2" />}
+              {isListening && <span className="pulse-ring pulse-ring-3" />}
+              {isSpeaking  && <span className="speak-ring" />}
+              {isSpeaking  && <span className="speak-ring speak-ring-2" />}
+              {isSpeaking  && <span className="speak-ring speak-ring-3" />}
+            </button>
+          </div>
 
-          {/* Wake word status indicator */}
+          <p className="mic-hint">{hintText}</p>
+
           {wakeMode && step === S.IDLE && (
             <div className={`wake-indicator ${wakeListening ? 'wake-indicator--active' : ''}`}>
               <span className="wake-dot" />
@@ -314,7 +333,7 @@ export default function VoicePanel() {
           )}
         </div>
 
-        {/* ── Chat input (text command) ── */}
+        {/* ── Chat input ── */}
         <div className="chat-input-section">
           <form onSubmit={handleChatSubmit} className="chat-form">
             <input
@@ -335,22 +354,22 @@ export default function VoicePanel() {
           </form>
         </div>
 
-        {/* ── Quick action buttons ── */}
+        {/* ── Quick actions ── */}
         <div className="quick-actions">
           {[
-            { label: '📸 Screenshot', cmd: 'take a screenshot' },
+            { label: '📸 Screenshot',  cmd: 'take a screenshot' },
             { label: '💻 System Info', cmd: 'show system info' },
-            { label: '🔋 Battery', cmd: 'how much battery' },
-            { label: '⏰ Timer 5m', cmd: 'start a 5 minute timer' },
-            { label: '📋 Clipboard', cmd: 'what did I copy' },
+            { label: '🔋 Battery',     cmd: 'how much battery' },
+            { label: '⏰ Timer 5m',    cmd: 'start a 5 minute timer' },
+            { label: '📋 Clipboard',   cmd: 'what did I copy' },
             { label: '💡 Brightness+', cmd: 'brightness up' },
-            { label: '🔊 Volume+', cmd: 'volume up' },
+            { label: '🔊 Volume+',     cmd: 'volume up' },
             { label: '✉️ Smart Reply', cmd: 'smart reply to this email' },
           ].map((action, i) => (
             <button
               key={i}
               className="quick-btn"
-              onClick={() => { setChatText(action.cmd); }}
+              onClick={() => setChatText(action.cmd)}
               disabled={isBusy}
               title={action.cmd}
             >
@@ -359,27 +378,28 @@ export default function VoicePanel() {
           ))}
         </div>
 
-        {/* ── Transcript ── */}
+        {/* ── Transcript (typewriter) ── */}
         {transcript && (
           <div className="card transcript-card">
             <p className="section-label">You said</p>
-            <p className="transcript-text selectable">"{transcript}"</p>
+            <p className="transcript-text selectable">"{typedTranscript}"</p>
           </div>
         )}
 
         {/* ── Error ── */}
         {error && (
           <div className="card error-card">
-            <XCircle size={14} /> <span>{error}</span>
+            <XCircle size={14} />
+            <span>{error}</span>
           </div>
         )}
 
         {/* ── Approval gate ── */}
         {isApproving && planData && (
-          <div className="card approval-card">
+          <div className="card approval-card card--glow-warning">
             <div className="approval-header">
               <span className="badge badge-yellow">⚠ Approval Required</span>
-              <p className="text-sm text-muted mt-1">
+              <p className="text-sm text-2 mt-1">
                 This plan includes sensitive actions. Review before proceeding.
               </p>
             </div>
@@ -388,7 +408,9 @@ export default function VoicePanel() {
                 <div key={i} className={`approval-task ${SENSITIVE.has(t.tool) ? 'task-sensitive' : 'task-safe'}`}>
                   <ChevronRight size={12} />
                   <span className="text-sm">{taskLabel(t)}</span>
-                  {SENSITIVE.has(t.tool) && <span className="badge badge-yellow text-xs">sensitive</span>}
+                  {SENSITIVE.has(t.tool) && (
+                    <span className="badge badge-yellow text-xs">sensitive</span>
+                  )}
                 </div>
               ))}
             </div>
@@ -424,21 +446,22 @@ export default function VoicePanel() {
           </div>
         )}
 
-        {/* ── Plan preview (before execution) ── */}
+        {/* ── Plan intent ── */}
         {planData && step === S.APPROVING && (
           <div className="card plan-meta">
             <p className="section-label">Intent</p>
-            <p className="text-sm text-muted selectable">{planData.intent}</p>
+            <p className="text-sm text-2 selectable">{planData.intent}</p>
           </div>
         )}
 
-        {/* ── Output display (code output, system info, etc.) ── */}
+        {/* ── Output ── */}
         {lastOutput && (
-          <div className="card output-card">
+          <div className="card output-card card--glow-accent">
             <p className="section-label">Output</p>
             <pre className="output-text selectable">{lastOutput}</pre>
           </div>
         )}
+
       </div>
     </div>
   )
@@ -446,8 +469,8 @@ export default function VoicePanel() {
 
 function StepIcon({ status }) {
   if (status === 'done')    return <CheckCircle size={14} className="text-success" />
-  if (status === 'failed')  return <XCircle size={14} className="text-danger" />
-  if (status === 'running') return <Loader size={14} className="text-accent spin" />
+  if (status === 'failed')  return <XCircle     size={14} className="text-danger"  />
+  if (status === 'running') return <Loader      size={14} className="text-accent spin" />
   return <Clock size={14} className="text-muted" />
 }
 

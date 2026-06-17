@@ -22,10 +22,19 @@ const RENDERER_URL = IS_DEV
   : `file://${path.join(__dirname, '../dist/index.html')}`
 
 // ── State ─────────────────────────────────────────────────────────────────────
-let mainWindow  = null
-let tray        = null
-let fastapiProc = null
-let isQuitting  = false
+let mainWindow    = null
+let tray          = null
+let fastapiProc   = null
+let isQuitting    = false
+let backendReady  = false
+
+// ── Start on Windows login ────────────────────────────────────────────────────
+if (!IS_DEV) {
+  app.setLoginItemSettings({
+    openAtLogin: true,
+    name: 'DesktopPilot AI',
+  })
+}
 
 // ── Single instance lock ──────────────────────────────────────────────────────
 const gotLock = app.requestSingleInstanceLock()
@@ -87,17 +96,15 @@ function createWindow() {
     // mainWindow.webContents.openDevTools({ mode: 'right' })
   }
 
-  // Minimize to tray on close
+  // Minimize to tray on close — don't quit
   mainWindow.on('close', (e) => {
     if (!isQuitting) {
       e.preventDefault()
       mainWindow.hide()
-      if (Notification.isSupported()) {
-        new Notification({
-          title: 'DesktopPilot AI',
-          body:  'Still running in the background. Right-click the tray icon to quit.',
-        }).show()
-      }
+      showNotification(
+        'Cipher AI',
+        'Minimized to tray. Say "Hey Cipher" anytime, or click the tray icon.'
+      )
     }
   })
 }
@@ -114,36 +121,123 @@ function createTray() {
   updateTrayMenu()
 
   tray.on('double-click', () => {
-    mainWindow.show()
-    mainWindow.focus()
+    showWindow()
+  })
+
+  // Single click also shows window on Windows
+  tray.on('click', () => {
+    showWindow()
   })
 }
 
 function updateTrayMenu(fastapiRunning = false) {
   if (!tray) return
+  backendReady = fastapiRunning
+
   const menu = Menu.buildFromTemplate([
-    { label: 'DesktopPilot AI', enabled: false },
-    { type: 'separator' },
     {
-      label: 'Show Window',
-      click: () => { mainWindow.show(); mainWindow.focus() }
+      label: 'Cipher AI',
+      enabled: false,
+      icon: nativeImage.createEmpty(),
     },
     {
-      label: 'Open Web Dashboard',
+      label: `  ${fastapiRunning ? '🟢 Agent Ready' : '🟡 Starting...'}`,
+      enabled: false,
+    },
+    { type: 'separator' },
+    // ── Quick Actions ──
+    {
+      label: '🎤  Open Voice Panel',
+      click: () => {
+        showWindow()
+        mainWindow?.webContents.send('navigate:panel', 'voice')
+      }
+    },
+    {
+      label: '📸  Take Screenshot',
+      enabled: fastapiRunning,
+      click: () => quickCommand('take a screenshot')
+    },
+    {
+      label: '🔋  Battery Status',
+      enabled: fastapiRunning,
+      click: () => quickCommand('how much battery do I have')
+    },
+    {
+      label: '🔇  Mute / Unmute',
+      enabled: fastapiRunning,
+      click: () => quickCommand('mute')
+    },
+    {
+      label: '🌙  Minimize All Windows',
+      enabled: fastapiRunning,
+      click: () => quickCommand('minimize everything')
+    },
+    { type: 'separator' },
+    // ── Window ──
+    {
+      label: '🪟  Show Window',
+      click: () => showWindow()
+    },
+    {
+      label: '📊  Open Dashboard',
       click: () => shell.openExternal('https://desktoppilot.vercel.app/dashboard')
     },
     { type: 'separator' },
     {
-      label: `Backend: ${fastapiRunning ? '● Running' : '○ Starting...'}`,
-      enabled: false,
+      label: '⚙  Restart Backend',
+      enabled: true,
+      click: () => {
+        stopFastAPI()
+        setTimeout(startFastAPI, 800)
+        showNotification('DesktopPilot AI', 'Restarting backend...')
+      }
     },
     { type: 'separator' },
     {
-      label: 'Quit',
+      label: '❌  Quit Cipher AI',
       click: () => { isQuitting = true; app.quit() }
     },
   ])
   tray.setContextMenu(menu)
+
+  // Update tooltip
+  tray.setToolTip(fastapiRunning ? 'Cipher AI — Agent Ready' : 'Cipher AI — Starting...')
+}
+
+function showWindow() {
+  if (!mainWindow) return
+  if (mainWindow.isMinimized()) mainWindow.restore()
+  mainWindow.show()
+  mainWindow.focus()
+}
+
+function showNotification(title, body) {
+  if (Notification.isSupported()) {
+    new Notification({ title, body }).show()
+  }
+}
+
+async function quickCommand(command) {
+  // Execute a quick command directly via the backend API (no UI needed)
+  try {
+    const planRes = await fetch(`http://127.0.0.1:${FASTAPI_PORT}/plan`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: command }),
+    })
+    const planData = await planRes.json()
+    if (planData.data?.plan) {
+      await fetch(`http://127.0.0.1:${FASTAPI_PORT}/execute`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: planData.data.plan }),
+      })
+    }
+  } catch (e) {
+    console.error(`Quick command failed: ${e.message}`)
+    showNotification('Cipher AI', 'Backend not ready yet. Open the app first.')
+  }
 }
 
 // ── FastAPI Backend ───────────────────────────────────────────────────────────

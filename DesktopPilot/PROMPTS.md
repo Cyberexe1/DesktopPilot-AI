@@ -351,5 +351,6 @@ All voice/text commands the system can execute.
 - "Draft a bug report template"
 
 ---
-
-
+ netstat -ano | Select-String ":8888"
+ 
+Stop-Process -Id 2804 -Force; Write-Output "Killed PID 2804 — port 8888 is now free"

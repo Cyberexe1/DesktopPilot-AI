@@ -5,39 +5,67 @@
   padding: 0.5rem 0.75rem;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 .search-icon {
-  position: absolute; left: 1.25rem; top: 50%; transform: translateY(-50%);
+  position: absolute;
+  left: 1.25rem;
+  top: 50%;
+  transform: translateY(-50%);
   pointer-events: none;
+  color: #444444;
 }
 .search-input { padding-left: 2rem; }
 
 .files-body { padding: 0; }
-
 .files-list { list-style: none; }
 
 .file-item {
-  display: flex; align-items: center; gap: 0.6rem;
-  padding: 0.45rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.48rem 1rem;
   cursor: pointer;
-  transition: background 0.1s;
+  transition: background var(--dur-fast), transform var(--dur-fast);
   border-bottom: 1px solid transparent;
+  animation: fadeInUp var(--dur-base) var(--ease-out) both;
 }
-.file-item:hover { background: var(--surface2); }
+
+.file-item:nth-child(1)   { animation-delay: 0.02s; }
+.file-item:nth-child(2)   { animation-delay: 0.04s; }
+.file-item:nth-child(3)   { animation-delay: 0.06s; }
+.file-item:nth-child(4)   { animation-delay: 0.08s; }
+.file-item:nth-child(n+5) { animation-delay: 0.10s; }
+
+.file-item:hover {
+  background: rgba(204,34,0,0.08);
+  transform: translateX(3px);
+}
 .file-item:hover .file-open-btn { opacity: 1; }
 
 .file-icon { font-size: 1rem; flex-shrink: 0; width: 20px; text-align: center; }
 
 .file-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.1rem; }
-.file-name { font-size: 0.8rem; font-weight: 500; }
-.file-path { font-size: 0.68rem; }
+.file-name { font-size: 0.8rem; font-weight: 500; color: #ffffff; }
+.file-path { font-size: 0.67rem; color: #444444; }
 
-.file-open-btn { opacity: 0; transition: opacity 0.15s; flex-shrink: 0; }
+.file-open-btn {
+  opacity: 0;
+  transition: opacity var(--dur-fast), transform var(--dur-fast), color var(--dur-fast);
+  flex-shrink: 0;
+  color: #444444;
+}
+.file-open-btn:hover { transform: scale(1.15); color: var(--accent2); }
 
 .files-footer {
-  display: flex; justify-content: space-between;
+  display: flex;
+  justify-content: space-between;
   padding: 0.4rem 1rem;
   border-top: 1px solid var(--border);
   flex-shrink: 0;
-  background: var(--surface);
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }

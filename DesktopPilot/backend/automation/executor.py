@@ -623,6 +623,78 @@ async def execute_task(task: dict, user_id: str = "default", prev_tool: str = ""
         delay = int(task.get("delay", 60))
         return await loop.run_in_executor(None, restart_computer, delay)
 
+    # ── Meeting Assistant ─────────────────────────────────────────────────
+    elif tool == "start_meeting":
+        from controllers.meeting_controller import start_meeting
+        title = task.get("title", task.get("name", ""))
+        return await loop.run_in_executor(None, start_meeting, title)
+
+    elif tool == "stop_meeting":
+        from controllers.meeting_controller import stop_meeting, process_meeting
+        stop_result = stop_meeting()
+        if "error" in stop_result:
+            return stop_result["error"]
+        email = task.get("email", "")
+        result = await process_meeting(
+            stop_result["wav_path"], stop_result["title"], email
+        )
+        items = len(result.get("action_items", []))
+        doc   = os.path.basename(result.get("doc_path", "notes.docx"))
+        return f"Meeting notes created: {doc} — {items} action items extracted"
+
+    # ── Clipboard Manager ─────────────────────────────────────────────────
+    elif tool == "clipboard_query":
+        from controllers.clipboard_manager_controller import ai_clipboard_query
+        query = task.get("query", task.get("text", ""))
+        result = await loop.run_in_executor(None, ai_clipboard_query, query)
+        return result
+
+    elif tool == "clipboard_history":
+        from controllers.clipboard_manager_controller import get_clipboard_history_smart
+        entries = get_clipboard_history_smart(10)
+        if not entries:
+            return "Clipboard history is empty"
+        lines = [f"[{e['tag'].upper()}] {e['preview']} ({e['timestamp']})" for e in entries]
+        return "Clipboard history:\n" + "\n".join(lines)
+
+    elif tool == "paste_clip":
+        from controllers.clipboard_manager_controller import paste_clip
+        entry_id = int(task.get("id", 1))
+        return await loop.run_in_executor(None, paste_clip, entry_id)
+
+    # ── Focus Mode ────────────────────────────────────────────────────────
+    elif tool == "start_focus":
+        from controllers.focus_controller import start_focus_mode
+        hours  = float(task.get("hours", task.get("duration_hours", 2.0)))
+        goal   = task.get("goal", "")
+        f_min  = int(task.get("focus_min", 25))
+        b_min  = int(task.get("break_min", 5))
+        return await loop.run_in_executor(None, start_focus_mode, hours, goal, f_min, b_min)
+
+    elif tool == "stop_focus":
+        from controllers.focus_controller import stop_focus_mode
+        result = await loop.run_in_executor(None, stop_focus_mode)
+        if "error" in result:
+            return result["error"]
+        return (
+            f"Focus session ended — {result['cycles_completed']} cycles, "
+            f"{result['total_focus_min']} minutes focused. "
+            f"Efficiency: {result['efficiency']}"
+        )
+
+    elif tool == "focus_status":
+        from controllers.focus_controller import get_focus_status
+        status = get_focus_status()
+        if not status["active"]:
+            return "Focus mode is not active"
+        remaining = status["remaining_sec"]
+        mins = remaining // 60
+        secs = remaining % 60
+        return (
+            f"Focus mode: Cycle {status['cycle']}/{status['total_cycles']} — "
+            f"{status['mode'].upper()} — {mins}m {secs}s remaining"
+        )
+
     else:
         return f"Unknown tool: {tool}"
 

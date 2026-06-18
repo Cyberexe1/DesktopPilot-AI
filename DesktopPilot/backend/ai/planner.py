@@ -27,7 +27,7 @@ SENSITIVE_TOOLS = {"run_terminal", "compose_email", "delete_file", "delete_by_pa
                    "create_project", "send_whatsapp", "generate_code",
                    "move_file", "move_files_by_type", "rename_file",
                    "clear_recycle_bin", "shutdown", "restart", "flush_dns",
-                   "cleanup_desktop"}
+                   "cleanup_desktop", "stop_meeting"}
 
 SYSTEM_PROMPT = """You are Cipher AI, an autonomous Windows desktop agent. Your name is Cipher.
 
@@ -135,7 +135,11 @@ File Operations:
 - find_duplicates    params: directory (string, optional)
 - cleanup_desktop    params: none — organizes desktop files into folders by type
 
-System Maintenance:
+Meeting Assistant:
+- start_meeting      params: title (string, optional) — start recording system audio for a meeting
+- stop_meeting       params: email (string, optional — send summary to this email) — stop recording, transcribe, summarize, save .docx
+
+
 - clear_recycle_bin  params: none
 - check_updates      params: none — opens Windows Update settings
 - show_installed_programs params: none
@@ -233,6 +237,10 @@ CRITICAL URL MAPPING: When the user says "open [website/service] in Chrome" or "
 If the website is not in the list, use https://www.[name].com as the URL.
 
 Examples of correct behavior:
+- User: "start meeting recording" → {"intent":"start meeting recording","tasks":[{"tool":"start_meeting","title":""}]}
+- User: "start recording my standup meeting" → {"intent":"start meeting recording","tasks":[{"tool":"start_meeting","title":"Standup Meeting"}]}
+- User: "stop meeting" → {"intent":"stop meeting and generate notes","tasks":[{"tool":"stop_meeting"}]}
+- User: "end meeting and send notes to john@gmail.com" → {"intent":"stop meeting and email notes","tasks":[{"tool":"stop_meeting","email":"john@gmail.com"}]}
 - User: "open Notepad" → {"intent":"open Notepad","tasks":[{"tool":"open_application","name":"Notepad"}]}
 - User: "open Chrome" → {"intent":"open Chrome","tasks":[{"tool":"open_application","name":"Chrome"}]}
 - User: "open Gmail in Chrome" → {"intent":"open Gmail in Chrome","tasks":[{"tool":"open_browser","url":"https://mail.google.com"}]}

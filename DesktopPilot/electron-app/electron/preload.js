@@ -9,6 +9,10 @@ const ALLOWED_CHANNELS = [
   'ws:status',
   'ws:client-count',
   'execution:update',
+  'wake:ready',
+  'wake:detected',
+  'wake:error',
+  'navigate:panel',
 ]
 
 contextBridge.exposeInMainWorld('dp', {
@@ -25,6 +29,10 @@ contextBridge.exposeInMainWorld('dp', {
   // ── Shell ──────────────────────────────────────────────────────────────────
   openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
   openFolder:   ()    => ipcRenderer.invoke('dialog:openFolder'),
+
+  // ── Wake word control ──────────────────────────────────────────────────────
+  startWake: () => ipcRenderer.invoke('wake:start'),
+  stopWake:  () => ipcRenderer.invoke('wake:stop'),
 
   // ── Events from main → renderer ────────────────────────────────────────────
   on: (channel, cb) => {

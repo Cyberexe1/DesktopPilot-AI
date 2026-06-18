@@ -22,7 +22,7 @@ export default function StatusBar() {
         </span>
         <span className="statusbar-sep" />
         <span className="statusbar-text">
-          v{agentStatus?.version || '1.0.0'}
+          v{agentStatus?.version || '1.0.1'}
         </span>
         <span className="statusbar-sep" />
         <span className="statusbar-text">Cipher AI</span>

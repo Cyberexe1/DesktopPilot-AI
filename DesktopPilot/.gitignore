@@ -9,6 +9,7 @@ env/
 
 # Build outputs
 dist/
+dist-electron/
 build/
 out/
 *.exe

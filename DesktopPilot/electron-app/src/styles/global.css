@@ -46,10 +46,10 @@
   --radius:     10px;
   --radius-sm:  6px;
   --radius-lg:  14px;
-  --sidebar-w:      54px;
-  --sidebar-w-exp:  224px;
-  --titlebar-h:     40px;
-  --statusbar-h:    26px;
+  --sidebar-w:      72px;
+  --sidebar-w-exp:  282px;
+  --titlebar-h:     55px;
+  --statusbar-h:    35px;
 
   /* ── Animation ── */
   --dur-fast:   110ms;
@@ -64,8 +64,8 @@ html, body, #root {
   background: var(--bg);
   color: var(--text);
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: 18px;
+  line-height: 1.6;
   overflow: hidden;
   user-select: none;
 }
@@ -88,9 +88,9 @@ button { cursor: pointer; font-family: inherit; border: none; outline: none; }
 .text-success { color: var(--success); }
 .text-danger  { color: var(--danger); }
 .text-warning { color: var(--warning); }
-.text-xs      { font-size: 0.7rem; }
-.text-sm      { font-size: 0.8rem; }
-.text-base    { font-size: 0.875rem; }
+.text-xs      { font-size: 0.8rem; }
+.text-sm      { font-size: 0.9rem; }
+.text-base    { font-size: 1rem; }
 .font-mono    { font-family: 'Consolas', 'Fira Code', monospace; }
 .truncate     { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mt-1         { margin-top: 0.25rem; }

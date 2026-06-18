@@ -62,11 +62,11 @@
 }
 
 .statusbar-text {
-  font-size: 0.68rem;
-  color: #444444;
+  font-size: 0.82rem;
+  color: #555555;
   transition: color var(--dur-base);
 }
-.statusbar-text--ready { color: #888888; }
+.statusbar-text--ready { color: #999999; }
 
 .statusbar-sep {
   width: 1px;

@@ -110,7 +110,11 @@ export function AgentProvider({ children }) {
     })
     const data = await res.json()
     if (data.error) throw new Error(data.error)
-    return data.data.results
+    // Attach speech metadata to the results array so callers can sync animation
+    const results = data.data.results
+    results.speechMs   = data.data.speech_ms   || 0
+    results.spokenText = data.data.spoken_text || ''
+    return results
   }, [])
 
   const getFiles = useCallback(async (query = '') => {

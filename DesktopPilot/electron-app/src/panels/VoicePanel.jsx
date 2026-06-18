@@ -50,6 +50,20 @@ export default function VoicePanel() {
 
   useEffect(() => { stepRef.current = step }, [step])
 
+  // Listen for wake word detected from Electron main process (pvporcupine)
+  // This fires when the always-on background listener detects "Hey Cipher"
+  useEffect(() => {
+    if (!window.dp) return
+    const handleWake = () => {
+      if (stepRef.current === S.IDLE && backendReady) {
+        addLog('Wake word detected — pvporcupine activated', 'success')
+        startListening()
+      }
+    }
+    window.dp.on('wake:detected', handleWake)
+    return () => window.dp.off('wake:detected')
+  }, [backendReady]) // eslint-disable-line
+
   /* ── Wake Word ── */
   useEffect(() => {
     if (!wakeMode || !backendReady) return
@@ -194,10 +208,27 @@ export default function VoicePanel() {
         )
       )
       if (outputResult) setLastOutput(outputResult.message)
-      const hasSpeakTask = p.tasks.some(t => t.tool === 'speak')
+      const hasSpeakTask = p.tasks.some(t => t.tool === 'speak' || t.tool === 'answer_question')
       if (hasSpeakTask || results.length > 0) {
         setStep(S.SPEAKING)
-        setTimeout(() => setStep(S.DONE), 3000)
+        // Animate the waveform for the full duration of the actual speech.
+        let speakDuration
+        if (results.speechMs && results.speechMs > 0) {
+          // Backend told us exactly how long the speech is
+          speakDuration = results.speechMs + 400
+        } else {
+          // Fallback: estimate from the longest spoken result message
+          // (~2.75 words/sec speaking rate)
+          const spokenMsg = results.reduce(
+            (longest, r) => (r.message && r.message.length > longest.length ? r.message : longest),
+            ''
+          )
+          const words = spokenMsg.trim() ? spokenMsg.trim().split(/\s+/).length : 0
+          speakDuration = words > 0
+            ? Math.min(Math.max((words / 2.75) * 1000 + 600, 2000), 20000)
+            : 3000
+        }
+        setTimeout(() => setStep(S.DONE), speakDuration)
       } else {
         setStep(S.DONE)
       }
@@ -298,7 +329,7 @@ export default function VoicePanel() {
             >
               {/* inner content */}
               {isBusy ? (
-                <Loader size={40} className="spin" />
+                <Loader size={60} className="spin" />
               ) : isSpeaking ? (
                 <div className="wave-bars">
                   <span className="wave-bar" />
@@ -308,9 +339,9 @@ export default function VoicePanel() {
                   <span className="wave-bar" />
                 </div>
               ) : isListening ? (
-                <MicOff size={40} />
+                <MicOff size={60} />
               ) : (
-                <Mic size={40} />
+                <Mic size={60} />
               )}
 
               {/* rings */}

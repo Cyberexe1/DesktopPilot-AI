@@ -74,6 +74,10 @@ async def lifespan(app: FastAPI):
     from controllers.clipboard_manager_controller import start_clipboard_monitor
     start_clipboard_monitor()
     log.info("Clipboard monitor started")
+    # Pre-warm Bedrock connection in background (reduces first-call latency)
+    from voice.pipeline import schedule_prewarm
+    schedule_prewarm()
+    log.info("Bedrock pre-warm scheduled")
     yield
     stop_file_watcher()
     log.info("DesktopPilot agent shut down")
@@ -146,7 +150,7 @@ async def plan(req: PlanRequest):
     if not req.text.strip():
         err("Command text cannot be empty")
 
-    # Check credits first (raises ValueError if insufficient)
+    # Check credits first
     from ai.memory import deduct_credits
     try:
         remaining = deduct_credits(req.user_id, amount=1)
@@ -155,8 +159,19 @@ async def plan(req: PlanRequest):
         return
 
     try:
-        log.info(f"Planning: {req.text}")
-        plan_data = await generate_plan(req.text, user_id=req.user_id)
+        log.info(f"Planning (parallel pipeline): {req.text}")
+
+        # ── Parallel pipeline: cache check + ack + Bedrock + prewarm ──
+        from voice.pipeline import run_parallel_pipeline, prewarm_bedrock
+
+        # Pre-warm while we also kick off the pipeline
+        # (prewarm is a no-op if already warmed)
+        plan_data = await run_parallel_pipeline(
+            text=req.text,
+            user_id=req.user_id,
+            ws_broadcast=ws_manager.broadcast,
+        )
+
         log.info(f"Plan: {len(plan_data.get('tasks', []))} tasks")
 
         await ws_manager.broadcast({
@@ -169,8 +184,16 @@ async def plan(req: PlanRequest):
     except Exception as e:
         log.error(f"Planning error: {e}")
         from controllers.voice_output_controller import speak
-        speak(f"Sorry, I couldn't understand that command.")
+        speak("Sorry, I couldn't understand that command.")
         err(str(e))
+
+
+# ── Pipeline Stats (cache hit rate, latency info) ─────────────────────────────
+
+@app.get("/pipeline/stats")
+async def pipeline_stats():
+    from voice.pipeline import command_cache
+    return ok({"cache": command_cache.stats()})
 
 
 # ── Execute ───────────────────────────────────────────────────────────────────
@@ -294,26 +317,39 @@ async def execute(req: ExecuteRequest):
 
         notify_done(success_count, len(results))
 
-        # Speak result — natural, human-like responses
+        # Speak result — natural, human-like responses (NON-BLOCKING)
+        # We capture the spoken text + estimate duration so the frontend
+        # can animate the waveform for exactly as long as speech plays.
+        spoken_text = ""
         plan_has_speak = any(t.get("tool") == "speak" for t in tasks)
         if not plan_has_speak:
-            from controllers.voice_output_controller import speak
+            from controllers.voice_output_controller import speak_nonblocking
             if success_count == len(results) and results:
-                speech = _generate_voice_response(results, intent)
-                speak(speech)
+                spoken_text = _generate_voice_response(results, intent)
             elif success_count < len(results):
                 failed = [r for r in results if not r["success"]]
                 skipped = [r for r in results if "Skipped" in r.get("message", "")]
                 if failed and not skipped:
-                    # Describe what failed and what worked
                     fail_tool = failed[0]["tool"].replace("_", " ")
-                    speak(f"I completed {success_count} of {len(results)} steps, Sir. The {fail_tool} step ran into an issue. You may want to try again.")
+                    spoken_text = f"I completed {success_count} of {len(results)} steps, Sir. The {fail_tool} step ran into an issue. You may want to try again."
                 elif skipped:
-                    speak(f"I stopped at step {success_count + 1} of {len(results)}, Sir — the remaining steps were skipped because a required step failed.")
+                    spoken_text = f"I stopped at step {success_count + 1} of {len(results)}, Sir — the remaining steps were skipped because a required step failed."
                 else:
-                    speak("I completed some steps but a few didn't work. Please check.")
+                    spoken_text = "I completed some steps but a few didn't work. Please check."
 
-        return ok({"results": results})
+            if spoken_text:
+                speak_nonblocking(spoken_text)
+
+        # Estimate speech duration (ms) so frontend animates the waveform
+        # for the full speech length. ~165 wpm ≈ 2.75 words/sec.
+        word_count = len(spoken_text.split()) if spoken_text else 0
+        speech_ms = int(word_count / 2.75 * 1000) + 600 if word_count else 0
+
+        return ok({
+            "results": results,
+            "spoken_text": spoken_text,
+            "speech_ms": speech_ms,
+        })
     except Exception as e:
         log.error(f"Execution error: {e}")
         err(str(e))

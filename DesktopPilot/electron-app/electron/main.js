@@ -25,6 +25,7 @@ const RENDERER_URL = IS_DEV
 let mainWindow    = null
 let tray          = null
 let fastapiProc   = null
+let wakeProc      = null   // pvporcupine wake word listener
 let isQuitting    = false
 let backendReady  = false
 
@@ -55,11 +56,14 @@ app.whenReady().then(() => {
   createWindow()
   createTray()
   startFastAPI()
+  // Start wake word listener after a short delay (backend needs to be up first)
+  setTimeout(startWakeListener, 6000)
 })
 
 app.on('before-quit', () => {
   isQuitting = true
   stopFastAPI()
+  stopWakeListener()
 })
 
 app.on('window-all-closed', () => {
@@ -309,6 +313,90 @@ function stopFastAPI() {
     fastapiProc = null
   }
 }
+
+// ── Wake Word Listener (pvporcupine — always-on background process) ────────────
+function startWakeListener() {
+  const backendDir = IS_DEV
+    ? path.join(__dirname, '../../backend')
+    : path.join(process.resourcesPath, 'backend')
+
+  const python = process.platform === 'win32' ? 'python' : 'python3'
+  const script = path.join(backendDir, 'voice', 'wake_listener.py')
+
+  if (!fs.existsSync(script)) {
+    console.log('[Wake] wake_listener.py not found — skipping wake word')
+    return
+  }
+
+  console.log('[Wake] Starting pvporcupine wake word listener...')
+
+  wakeProc = spawn(python, [script], {
+    cwd:   backendDir,
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env:   { ...process.env },
+  })
+
+  // Read stdout line by line — this is how wake_listener.py sends IPC signals
+  let buffer = ''
+  wakeProc.stdout.on('data', (data) => {
+    buffer += data.toString()
+    const lines = buffer.split('\n')
+    buffer = lines.pop()  // Keep incomplete line in buffer
+
+    for (const line of lines) {
+      const msg = line.trim()
+      if (!msg) continue
+
+      if (msg === 'WAKE_READY') {
+        console.log('[Wake] Listener ready ✓')
+        mainWindow?.webContents.send('wake:ready')
+
+      } else if (msg === 'WAKE_DETECTED') {
+        console.log('[Wake] Wake word detected!')
+        // Tell the renderer to activate voice listening
+        mainWindow?.webContents.send('wake:detected')
+        // Show window if it was hidden
+        showWindow()
+
+      } else if (msg.startsWith('WAKE_ERROR:')) {
+        const errMsg = msg.replace('WAKE_ERROR:', '')
+        console.error(`[Wake] Error: ${errMsg}`)
+        mainWindow?.webContents.send('wake:error', errMsg)
+      }
+    }
+  })
+
+  wakeProc.stderr.on('data', (d) => {
+    // Suppress — wake listener is noisy with audio library logs
+  })
+
+  wakeProc.on('exit', (code) => {
+    console.log(`[Wake] Listener exited (code ${code})`)
+    wakeProc = null
+    // Auto-restart after 5s if not quitting
+    if (!isQuitting) {
+      setTimeout(startWakeListener, 5000)
+    }
+  })
+}
+
+function stopWakeListener() {
+  if (wakeProc) {
+    wakeProc.kill('SIGTERM')
+    wakeProc = null
+  }
+}
+
+// IPC: renderer can toggle wake listener on/off
+ipcMain.handle('wake:start', () => {
+  if (!wakeProc) startWakeListener()
+  return { ok: true }
+})
+
+ipcMain.handle('wake:stop', () => {
+  stopWakeListener()
+  return { ok: true }
+})
 
 // ── IPC Handlers ──────────────────────────────────────────────────────────────
 

@@ -46,7 +46,7 @@ export default function LoginPanel({ onLogin }) {
   return (
     <div className="login-panel">
       <div className="login-panel-card">
-        <h1 className="login-panel-brand">Cipher AI</h1>
+        <h1 className="login-panel-brand">DesktopPilot AI</h1>
         <p className="login-panel-sub">
           {mode === 'login' ? 'Sign in to continue' : 'Create your account'}
         </p>

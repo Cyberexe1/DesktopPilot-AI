@@ -17,7 +17,7 @@ import boto3
 from botocore.exceptions import ClientError, NoCredentialsError
 
 REGION        = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
-MODEL_ID      = os.getenv("BEDROCK_MODEL_ID", "us.anthropic.claude-opus-4-1-20250805-v1:0")
+MODEL_ID      = os.getenv("BEDROCK_MODEL_ID", "us.amazon.nova-pro-v1:0")
 BEDROCK_KEY   = os.getenv("AWS_BEARER_TOKEN_BEDROCK")
 
 PAYLOAD = {

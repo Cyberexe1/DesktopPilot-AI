@@ -1,4 +1,4 @@
-# Cipher AI — Commands & Prompts List
+# DesktopPilot AI — Commands & Prompts List
 
 All voice/text commands the system can execute.
 

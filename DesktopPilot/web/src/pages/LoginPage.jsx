@@ -40,7 +40,7 @@ export default function LoginPage() {
     <div className="login-page">
       <div className="login-card">
         <div className="login-header">
-          <h1 className="login-brand">Cipher AI</h1>
+          <h1 className="login-brand">DesktopPilot AI</h1>
           <p className="login-sub">
             {mode === 'login' ? 'Sign in to your dashboard' : 'Create a new account'}
           </p>

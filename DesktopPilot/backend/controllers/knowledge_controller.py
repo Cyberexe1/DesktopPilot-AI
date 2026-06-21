@@ -12,7 +12,7 @@ import boto3
 log = logging.getLogger(__name__)
 
 REGION   = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
-MODEL_ID = os.getenv("BEDROCK_MODEL_ID", "us.meta.llama3-3-70b-instruct-v1:0")
+MODEL_ID = os.getenv("BEDROCK_MODEL_ID", "us.amazon.nova-pro-v1:0")
 
 bedrock = boto3.client("bedrock-runtime", region_name=REGION)
 

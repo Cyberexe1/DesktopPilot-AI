@@ -24,6 +24,7 @@ def wait_for_window(title_contains: str, timeout: int = 10) -> bool:
     """
     Wait until a window with the given title substring is active.
     Returns True if found within timeout, False otherwise.
+    Polls frequently so it returns as soon as the window appears.
     """
     start = time.time()
     title_lower = title_contains.lower()
@@ -36,7 +37,7 @@ def wait_for_window(title_contains: str, timeout: int = 10) -> bool:
                 return True
         except Exception:
             pass
-        time.sleep(0.5)
+        time.sleep(0.15)
 
     log.warning(f"Window containing '{title_contains}' not found within {timeout}s")
     return False

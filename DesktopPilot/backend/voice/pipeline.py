@@ -280,18 +280,11 @@ async def run_parallel_pipeline(
     # ── 4. Generate plan (with selected model) ───────────────────────────
     t_bedrock = time.time()
 
-    # Temporarily override model for this call if using lite
-    original_model = os.environ.get("BEDROCK_MODEL_ID", "")
-    if complexity == "simple":
-        os.environ["BEDROCK_MODEL_ID"] = selected_model
-
-    try:
-        from ai.planner import generate_plan
-        plan = await generate_plan(text, user_id=user_id)
-    finally:
-        # Restore original model
-        if complexity == "simple":
-            os.environ["BEDROCK_MODEL_ID"] = original_model
+    # Pass the chosen model directly to the planner. (Previously this mutated
+    # os.environ, which had no effect because the planner read MODEL_ID once at
+    # import time — so simple commands never actually used the faster model.)
+    from ai.planner import generate_plan
+    plan = await generate_plan(text, user_id=user_id, model_id=selected_model)
 
     bedrock_ms = round((time.time() - t_bedrock) * 1000)
     total_ms   = round((time.time() - t0) * 1000)

@@ -18,7 +18,7 @@ from ai.prompt_enhancer import enhance_prompt
 log = logging.getLogger(__name__)
 
 REGION   = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
-MODEL_ID = os.getenv("BEDROCK_MODEL_ID", "us.meta.llama3-3-70b-instruct-v1:0")
+MODEL_ID = os.getenv("BEDROCK_MODEL_ID", "us.amazon.nova-pro-v1:0")
 
 bedrock = boto3.client("bedrock-runtime", region_name=REGION)
 
@@ -266,21 +266,30 @@ Output format:
 }"""
 
 
-def _is_llama_model() -> bool:
-    return "meta" in MODEL_ID.lower() or "llama" in MODEL_ID.lower()
+def _is_llama_model(model_id: str = MODEL_ID) -> bool:
+    return "meta" in model_id.lower() or "llama" in model_id.lower()
 
 
-def _is_nova_model() -> bool:
-    return "nova" in MODEL_ID.lower() or "amazon" in MODEL_ID.lower()
+def _is_nova_model(model_id: str = MODEL_ID) -> bool:
+    return "nova" in model_id.lower() or "amazon" in model_id.lower()
 
 
-async def generate_plan(user_command: str, user_id: str = "default") -> dict:
-    """Call Bedrock and return a parsed plan dict."""
+async def generate_plan(user_command: str, user_id: str = "default",
+                        model_id: str = None) -> dict:
+    """
+    Call Bedrock and return a parsed plan dict.
+
+    model_id lets the caller (e.g. the latency pipeline) pick a faster model
+    for simple commands. If omitted, falls back to the BEDROCK_MODEL_ID env
+    var, then the module default. Passing it explicitly is preferred over
+    mutating os.environ (thread-safe under concurrent requests).
+    """
     loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, _plan_sync, user_command, user_id)
+    resolved = model_id or os.getenv("BEDROCK_MODEL_ID", MODEL_ID)
+    return await loop.run_in_executor(None, _plan_sync, user_command, user_id, resolved)
 
 
-def _plan_sync(user_command: str, user_id: str) -> dict:
+def _plan_sync(user_command: str, user_id: str, model_id: str = MODEL_ID) -> dict:
     # Step 1: Enhance the prompt — make vague commands clear
     enhanced_command = enhance_prompt(user_command)
     log.info(f"Original: '{user_command}' → Enhanced: '{enhanced_command}'")
@@ -289,12 +298,12 @@ def _plan_sync(user_command: str, user_id: str) -> dict:
     enriched = enrich_prompt(enhanced_command, user_id)
     full_prompt = f"{SYSTEM_PROMPT}\n\n{enriched}"
 
-    log.info(f"Calling Bedrock ({MODEL_ID}) for: {enhanced_command}")
+    log.info(f"Calling Bedrock ({model_id}) for: {enhanced_command}")
 
-    body = _build_request_body(full_prompt)
+    body = _build_request_body(full_prompt, model_id)
 
     response = bedrock.invoke_model(
-        modelId=MODEL_ID,
+        modelId=model_id,
         body=json.dumps(body),
         contentType="application/json",
         accept="application/json",
@@ -316,11 +325,11 @@ def _plan_sync(user_command: str, user_id: str) -> dict:
     return plan
 
 
-def _build_request_body(prompt: str) -> dict:
+def _build_request_body(prompt: str, model_id: str = MODEL_ID) -> dict:
     """Build request body based on model type."""
-    if _is_llama_model():
+    if _is_llama_model(model_id):
         return {"prompt": prompt, "max_gen_len": 1024, "temperature": 0.01}
-    elif _is_nova_model():
+    elif _is_nova_model(model_id):
         # Amazon Nova uses the messages API format
         return {
             "schemaVersion": "messages-v1",
@@ -396,10 +405,7 @@ def _post_process_plan(plan: dict, user_command: str) -> dict:
     cmd = user_command.lower().strip()
     tasks = plan.get("tasks", [])
 
-    if not tasks:
-        return plan
-
-    # ── Greetings: keep ONLY the speak task ──
+    # ── Greetings: keep ONLY the speak task (handled before the empty guard) ──
     greetings = ["hello", "hi ", "hey", "good morning", "good evening", "good night",
                  "thank you", "thanks", "bye", "goodbye", "how are you", "what's up",
                  "hi cipher", "hello cipher", "hi kajal", "hello kajal"]
@@ -409,15 +415,13 @@ def _post_process_plan(plan: dict, user_command: str) -> dict:
         speak_tasks = [t for t in tasks if t.get("tool") == "speak"]
         if speak_tasks:
             plan["tasks"] = [speak_tasks[0]]
-            plan["intent"] = "greeting"
-            log.info("Post-process: greeting — kept only speak task")
-            return plan
         else:
             plan["tasks"] = [{"tool": "speak", "text": "Hello Sir! I'm Cipher. How may I help you today?"}]
-            plan["intent"] = "greeting"
-            return plan
+        plan["intent"] = "greeting"
+        log.info("Post-process: greeting — kept only speak task")
+        return plan
 
-    # ── Knowledge questions: keep answer_question task ──
+    # ── Knowledge questions: force an answer_question task ──
     question_words = ["what is", "what are", "what's", "explain", "who is", "who invented",
                       "why is", "why do", "how does", "how do", "define", "tell me about",
                       "what does", "describe", "meaning of", "tell me", "who are",
@@ -439,15 +443,23 @@ def _post_process_plan(plan: dict, user_command: str) -> dict:
     if (is_question or is_info_seeking) and not is_system:
         answer_tasks = [t for t in tasks if t.get("tool") == "answer_question"]
         if answer_tasks:
-            plan["tasks"] = [answer_tasks[0]]
-            plan["intent"] = "knowledge question"
-            log.info("Post-process: knowledge question")
-            return plan
+            # The model sometimes emits answer_question with no/empty question
+            # field (or a different key) → controller says "No question provided".
+            # Always backfill from the user's command.
+            a = answer_tasks[0]
+            q = a.get("question") or a.get("text") or a.get("query") or user_command
+            plan["tasks"] = [{"tool": "answer_question", "question": q}]
         else:
-            # AI didn't use answer_question — force it
-            plan["tasks"] = [{"tool": "answer_question", "question": cmd}]
-            plan["intent"] = "knowledge question"
-            return plan
+            # AI returned the wrong tool or an empty plan — force answer_question.
+            # Use the original command (preserves casing / proper nouns).
+            plan["tasks"] = [{"tool": "answer_question", "question": user_command}]
+        plan["intent"] = "knowledge question"
+        log.info("Post-process: knowledge question")
+        return plan
+
+    # ── Nothing more to do if the model returned no tasks ──
+    if not tasks:
+        return plan
 
     # ── Simple "open X" command — keep only 1 step ──
     open_keywords = ["open ", "launch ", "start "]

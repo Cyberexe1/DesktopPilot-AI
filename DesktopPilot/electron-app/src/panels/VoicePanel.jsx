@@ -185,7 +185,7 @@ export default function VoicePanel() {
       const results = await execute(p)
       for (let i = 0; i < results.length; i++) {
         setExec(prev => prev.map((s, j) => j === i ? { ...s, status: 'running' } : s))
-        await new Promise(r => setTimeout(r, 300))
+        await new Promise(r => setTimeout(r, 100))
         setExec(prev => prev.map((s, j) =>
           j === i
             ? { ...s,
@@ -410,7 +410,7 @@ export default function VoicePanel() {
         </div>
 
         {/* ── Transcript (typewriter) ── */}
-        {transcript && (
+        {transcript.trim() && (
           <div className="card transcript-card">
             <p className="section-label">You said</p>
             <p className="transcript-text selectable">"{typedTranscript}"</p>
@@ -478,7 +478,7 @@ export default function VoicePanel() {
         )}
 
         {/* ── Plan intent ── */}
-        {planData && step === S.APPROVING && (
+        {planData && step === S.APPROVING && planData.intent?.trim() && (
           <div className="card plan-meta">
             <p className="section-label">Intent</p>
             <p className="text-sm text-2 selectable">{planData.intent}</p>
@@ -517,5 +517,12 @@ function taskLabel(t) {
     open_setting:     `Settings: ${t.name || ''}`,
     compose_email:    `Email to: ${t.to || ''}`,
   }
-  return m[t.tool] || t.tool
+  // Fall back to a human-readable version of the tool name so a step is
+  // never rendered as a blank row (e.g. "take_screenshot" → "Take screenshot").
+  if (m[t.tool]) return m[t.tool]
+  if (t.tool) {
+    const words = t.tool.replace(/_/g, ' ').trim()
+    return words.charAt(0).toUpperCase() + words.slice(1)
+  }
+  return 'Step'
 }

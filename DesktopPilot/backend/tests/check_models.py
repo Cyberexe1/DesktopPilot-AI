@@ -19,8 +19,8 @@ for m in active:
 
 # Try invoking the cheapest/smallest active model first
 test_models = [
-    "us.anthropic.claude-opus-4-1-20250805-v1:0",
-    "anthropic.claude-opus-4-1-20250805-v1:0",
+    "us.amazon.nova-pro-v1:0",
+    "us.amazon.nova-lite-v1:0",
 ]
 
 payload = json.dumps({

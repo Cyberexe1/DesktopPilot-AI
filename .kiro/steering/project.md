@@ -54,7 +54,7 @@ Built for a hackathon under **Track 2 (B2B)** or **Track 4 (Open Innovation)**.
 │  │     🧠 Memory    — last project, recent commands context     │
 │  │     ⚙  Settings  — AWS config, approval toggles, links       │
 │  │     ↗  Dashboard — opens Vercel web dashboard                │
-│  └── StatusBar  [● FastAPI :8000]  [Windows]  [v1.0.0]         │
+│  └── StatusBar  [● FastAPI :8888]  [Windows]  [v1.0.0]         │
 │                                                                 │
 │  Internally spawns + manages FastAPI backend process            │
 │  System tray — minimize to tray, stays running                  │
@@ -63,7 +63,7 @@ Built for a hackathon under **Track 2 (B2B)** or **Track 4 (Open Innovation)**.
 ┌─────────────────────────────────────────────────────────────────┐
 │  LOCAL BACKEND  (backend/)                                      │
 │                                                                 │
-│  FastAPI on :8000 — spawned by Electron on startup             │
+│  FastAPI on :8888 — spawned by Electron on startup             │
 │  ├── /health          → agent status check                      │
 │  ├── /transcribe      → upload audio → AWS Transcribe           │
 │  ├── /plan            → text → AWS Bedrock → JSON plan          │
@@ -78,7 +78,7 @@ Built for a hackathon under **Track 2 (B2B)** or **Track 4 (Open Innovation)**.
 │  AWS BACKEND  (aws/)                                            │
 │                                                                 │
 │  Amazon Transcribe    → speech to text                          │
-│  Amazon Bedrock       → Claude 3 Sonnet — intent + planning     │
+│  Amazon Bedrock       → Amazon Nova Pro — intent + planning     │
 │  AWS Lambda           → voice-handler, planner-handler,         │
 │                          memory-handler, executor-handler        │
 │  AWS Step Functions   → full pipeline orchestration             │
@@ -97,7 +97,7 @@ Built for a hackathon under **Track 2 (B2B)** or **Track 4 (Open Innovation)**.
 | Vercel Website | React 18 + Vite 5 + JSX, react-router-dom, lucide-react |
 | Desktop App | Electron 31 + React 18 + JSX (Vite renderer) |
 | Local Backend | Python 3.11 + FastAPI 0.111 + Uvicorn |
-| AI Planning | Amazon Bedrock — Claude 3 Sonnet |
+| AI Planning | Amazon Bedrock — Amazon Nova Pro |
 | Voice Input | Amazon Transcribe |
 | Orchestration | AWS Step Functions + AWS Lambda |
 | Cloud Database | Amazon DynamoDB |
@@ -133,7 +133,7 @@ DesktopPilot/
 │       │   └── Navbar.jsx + .css     ← Agent connection indicator
 │       └── lib/
 │           ├── api.js                ← transcribeAudio, generatePlan, executePlan
-│           └── websocket.js          ← ws://localhost:8765 client
+│           └── websocket.js          ← ws://localhost:8888 client
 │
 ├── electron-app/                     ← Desktop app (.exe)
 │   ├── index.html
@@ -203,7 +203,7 @@ DesktopPilot/
 - Electron main process: spawns FastAPI, system tray, IPC handlers, window controls
 - FastAPI backend: all routes live (`/health`, `/transcribe`, `/plan`, `/execute`, `/files/*`, `/projects`, `/memory`)
 - Voice pipeline: mic → MediaRecorder → FormData → `/transcribe` → AWS Transcribe → text
-- AI planner: text → `/plan` → Bedrock Claude 3 Sonnet → JSON plan with `requires_approval` flag
+- AI planner: text → `/plan` → Bedrock Amazon Nova Pro → JSON plan with `requires_approval` flag
 - Executor: async multi-step runner dispatching to all 5 controllers
 - SQLite: files, commands, projects tables initialized on startup
 - File indexer: runs on startup, scans 6 directories, 20 file extensions
@@ -328,13 +328,14 @@ AWS_DEFAULT_REGION=us-east-1
 S3_BUCKET_NAME=desktoppilot-audio
 DYNAMODB_TABLE_MEMORY=DesktopPilotMemory
 DYNAMODB_TABLE_COMMANDS=DesktopPilotCommands
-BEDROCK_MODEL_ID=anthropic.claude-3-sonnet-20240229-v1:0
+BEDROCK_MODEL_ID=us.amazon.nova-pro-v1:0
+BEDROCK_ENHANCER_MODEL_ID=us.amazon.nova-lite-v1:0
 STEP_FUNCTION_ARN=arn:aws:states:us-east-1:ACCOUNT_ID:stateMachine:DesktopPilotWorkflow
 ```
 
 ### web/.env
 ```env
-VITE_API_URL=http://localhost:8000
+VITE_API_URL=http://localhost:8888
 VITE_DOWNLOAD_URL=https://desktoppilot-audio.s3.amazonaws.com/DesktopPilot-Setup.exe
 ```
 
@@ -393,7 +394,7 @@ Never hardcode credentials. Never commit `.env` files.
 cd DesktopPilot/backend
 pip install -r requirements.txt
 cp .env.example .env          # fill in AWS credentials
-uvicorn main:app --port 8000
+uvicorn main:app --port 8888
 
 # 2. Electron app (dev mode)
 cd DesktopPilot/electron-app

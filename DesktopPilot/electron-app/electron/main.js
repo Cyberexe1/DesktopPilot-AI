@@ -10,7 +10,7 @@ const {
   ipcMain, shell, Notification, dialog
 } = require('electron')
 const path    = require('path')
-const { spawn } = require('child_process')
+const { spawn, spawnSync } = require('child_process')
 const http    = require('http')
 const fs      = require('fs')
 
@@ -106,7 +106,7 @@ function createWindow() {
       e.preventDefault()
       mainWindow.hide()
       showNotification(
-        'Cipher AI',
+        'DesktopPilot AI',
         'Minimized to tray. Say "Hey Cipher" anytime, or click the tray icon.'
       )
     }
@@ -140,7 +140,7 @@ function updateTrayMenu(fastapiRunning = false) {
 
   const menu = Menu.buildFromTemplate([
     {
-      label: 'Cipher AI',
+      label: 'DesktopPilot AI',
       enabled: false,
       icon: nativeImage.createEmpty(),
     },
@@ -199,14 +199,14 @@ function updateTrayMenu(fastapiRunning = false) {
     },
     { type: 'separator' },
     {
-      label: '❌  Quit Cipher AI',
+      label: '❌  Quit DesktopPilot AI',
       click: () => { isQuitting = true; app.quit() }
     },
   ])
   tray.setContextMenu(menu)
 
   // Update tooltip
-  tray.setToolTip(fastapiRunning ? 'Cipher AI — Agent Ready' : 'Cipher AI — Starting...')
+  tray.setToolTip(fastapiRunning ? 'DesktopPilot AI — Agent Ready' : 'DesktopPilot AI — Starting...')
 }
 
 function showWindow() {
@@ -240,17 +240,50 @@ async function quickCommand(command) {
     }
   } catch (e) {
     console.error(`Quick command failed: ${e.message}`)
-    showNotification('Cipher AI', 'Backend not ready yet. Open the app first.')
+    showNotification('DesktopPilot AI', 'Backend not ready yet. Open the app first.')
   }
 }
 
 // ── FastAPI Backend ───────────────────────────────────────────────────────────
+
+// Resolve a working Python interpreter once. GUI apps don't always get the same
+// PATH as a terminal, and the launcher may be `py` (python.org) instead of
+// `python`, so we probe a few candidates with `--version`.
+let pythonCmd = null
+function resolvePython() {
+  if (pythonCmd) return pythonCmd
+  const candidates = process.platform === 'win32'
+    ? ['python', 'py', 'python3']
+    : ['python3', 'python']
+  for (const cmd of candidates) {
+    try {
+      const r = spawnSync(cmd, ['--version'], { stdio: 'ignore' })
+      if (!r.error && r.status === 0) {
+        pythonCmd = cmd
+        console.log(`[Python] Using interpreter: ${cmd}`)
+        return cmd
+      }
+    } catch (_) { /* try next */ }
+  }
+  return null
+}
+
 function startFastAPI() {
   const backendDir = IS_DEV
     ? path.join(__dirname, '../../backend')
     : path.join(process.resourcesPath, 'backend')
 
-  const python = process.platform === 'win32' ? 'python' : 'python3'
+  const python = resolvePython()
+  if (!python) {
+    console.error('[FastAPI] Python not found on PATH')
+    mainWindow?.webContents.send('fastapi:status', { running: false, error: 'python-not-found' })
+    updateTrayMenu(false)
+    showNotification(
+      'DesktopPilot AI',
+      'Python was not found. Install Python 3.11+ and make sure it is on your PATH, then reopen the app.'
+    )
+    return
+  }
 
   console.log(`[FastAPI] Starting from: ${backendDir}`)
 
@@ -263,6 +296,16 @@ function startFastAPI() {
       env:   { ...process.env },
     }
   )
+
+  // Without this, a failed spawn (e.g. ENOENT) becomes an uncaught exception
+  // and crashes the whole app with a JavaScript error dialog.
+  fastapiProc.on('error', (err) => {
+    console.error(`[FastAPI] Failed to start: ${err.message}`)
+    mainWindow?.webContents.send('fastapi:status', { running: false, error: err.message })
+    updateTrayMenu(false)
+    showNotification('DesktopPilot AI', `Backend failed to start: ${err.message}`)
+    fastapiProc = null
+  })
 
   fastapiProc.stdout.on('data', (d) => {
     const msg = d.toString().trim()
@@ -308,10 +351,8 @@ function pollFastAPI(attempt = 0) {
 }
 
 function stopFastAPI() {
-  if (fastapiProc) {
-    fastapiProc.kill('SIGTERM')
-    fastapiProc = null
-  }
+  killProcessTree(fastapiProc)
+  fastapiProc = null
 }
 
 // ── Wake Word Listener (pvporcupine — always-on background process) ────────────
@@ -320,7 +361,11 @@ function startWakeListener() {
     ? path.join(__dirname, '../../backend')
     : path.join(process.resourcesPath, 'backend')
 
-  const python = process.platform === 'win32' ? 'python' : 'python3'
+  const python = resolvePython()
+  if (!python) {
+    console.log('[Wake] Python not found — skipping wake word listener')
+    return
+  }
   const script = path.join(backendDir, 'voice', 'wake_listener.py')
 
   if (!fs.existsSync(script)) {
@@ -334,6 +379,12 @@ function startWakeListener() {
     cwd:   backendDir,
     stdio: ['ignore', 'pipe', 'pipe'],
     env:   { ...process.env },
+  })
+
+  // Handle spawn failure so it never crashes the main process.
+  wakeProc.on('error', (err) => {
+    console.error(`[Wake] Failed to start: ${err.message}`)
+    wakeProc = null
   })
 
   // Read stdout line by line — this is how wake_listener.py sends IPC signals
@@ -381,9 +432,23 @@ function startWakeListener() {
 }
 
 function stopWakeListener() {
-  if (wakeProc) {
-    wakeProc.kill('SIGTERM')
-    wakeProc = null
+  killProcessTree(wakeProc)
+  wakeProc = null
+}
+
+// Kill a spawned child process AND its descendants. On Windows a plain
+// SIGTERM only kills the direct child (e.g. the python launcher) and can leave
+// grandchildren holding file locks, so use taskkill /T to take down the tree.
+function killProcessTree(proc) {
+  if (!proc || proc.pid == null) return
+  try {
+    if (process.platform === 'win32') {
+      spawn('taskkill', ['/pid', String(proc.pid), '/t', '/f'])
+    } else {
+      proc.kill('SIGTERM')
+    }
+  } catch (e) {
+    try { proc.kill('SIGKILL') } catch (_) {}
   }
 }
 

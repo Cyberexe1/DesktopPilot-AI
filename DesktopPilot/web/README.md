@@ -1,4 +1,4 @@
-# Cipher AI — Web Application
+# DesktopPilot AI — Web Application
 
 React + Vite website deployed on Vercel. Serves as the landing page + user dashboard.
 
@@ -75,7 +75,7 @@ Setup guide with sidebar navigation:
 ## Components
 
 ### Navbar
-- Logo: "Cipher AI" (was DesktopPilot)
+- Logo: "DesktopPilot AI"
 - Navigation: Home | Dashboard | Docs
 - **Agent connection indicator** — green dot + "Agent Connected" (pings `localhost:8888/health` every 10s)
 - **Credits badge** — shows current balance when agent is online

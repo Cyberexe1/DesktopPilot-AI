@@ -242,7 +242,7 @@ BEDROCK_ENHANCER_MODEL_ID=us.amazon.nova-lite-v1:0
 ### `web/.env`
 
 ```env
-VITE_API_URL=http://localhost:8000
+VITE_API_URL=http://localhost:8888
 VITE_DOWNLOAD_URL=https://desktoppilot-audio.s3.amazonaws.com/DesktopPilot-Setup.exe
 ```
 

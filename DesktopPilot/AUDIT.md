@@ -1,4 +1,4 @@
-# Cipher AI — Full Prompt Audit
+# DesktopPilot AI — Full Prompt Audit
 
 Complete audit of every prompt in PROMPTS.md — whether it actually works, and what tool it maps to.
 

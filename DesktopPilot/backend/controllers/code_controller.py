@@ -128,7 +128,7 @@ def _generate_code(description: str, language: str) -> str:
     import boto3
 
     REGION = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
-    MODEL_ID = os.getenv("BEDROCK_MODEL_ID", "us.meta.llama3-3-70b-instruct-v1:0")
+    MODEL_ID = os.getenv("BEDROCK_MODEL_ID", "us.amazon.nova-pro-v1:0")
 
     prompt = f"""Write a {language.upper()} program. ONLY {language.upper()} syntax.
 

@@ -5,6 +5,21 @@
   align-items: center;
 }
 
+/* Stop flexbox from compressing the cards. Without this, when content is
+   taller than the panel, flex shrinks each card (which has overflow:hidden),
+   clipping the execution plan to a thin bar. flex-shrink:0 keeps every card at
+   its natural height and lets .panel-body (overflow-y:auto) scroll instead. */
+.voice-panel .panel-body > * {
+  flex-shrink: 0;
+  max-width: 620px;
+  width: 100%;
+}
+
+/* The mic section is auto-width (centered orb), not a full-width card. */
+.voice-panel .panel-body > .mic-section {
+  width: auto;
+}
+
 /* ──────────────────────────────
    Mic section
 ────────────────────────────── */

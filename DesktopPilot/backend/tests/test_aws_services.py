@@ -16,7 +16,7 @@ REGION    = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
 S3_BUCKET = os.getenv("S3_BUCKET_NAME", "desktoppilot-audio")
 MEM_TABLE = os.getenv("DYNAMODB_TABLE_MEMORY", "DesktopPilotMemory")
 CMD_TABLE = os.getenv("DYNAMODB_TABLE_COMMANDS", "DesktopPilotCommands")
-MODEL_ID  = os.getenv("BEDROCK_MODEL_ID", "us.anthropic.claude-opus-4-1-20250805-v1:0")
+MODEL_ID  = os.getenv("BEDROCK_MODEL_ID", "us.amazon.nova-pro-v1:0")
 
 results = {}
 

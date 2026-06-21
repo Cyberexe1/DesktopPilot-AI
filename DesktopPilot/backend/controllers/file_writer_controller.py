@@ -621,7 +621,7 @@ def _create_pptx(filepath: str, content: str):
 
     # ── Parse slides data ──
     title_text    = content_lines[0] if content_lines else "Presentation"
-    subtitle_text = content_lines[1] if len(content_lines) > 1 else "Created by Cipher AI"
+    subtitle_text = content_lines[1] if len(content_lines) > 1 else "Created by DesktopPilot AI"
     remaining     = content_lines[2:] if len(content_lines) > 2 else []
 
     slides_data = []
@@ -676,7 +676,7 @@ def _create_pptx(filepath: str, content: str):
              size=Pt(20), color=ACCENT1, align=PP_ALIGN.CENTER, italic=True)
 
     # Footer
-    _textbox(slide, "Cipher AI  •  DesktopPilot",
+    _textbox(slide, "DesktopPilot AI",
              Inches(0.5), Inches(6.8), Inches(12.0), Inches(0.5),
              size=Pt(10), color=LIGHT_GRAY, align=PP_ALIGN.CENTER)
 

@@ -6,7 +6,7 @@ import './SettingsPanel.css'
 const DEFAULT_SETTINGS = {
   aws_region:    'us-east-1',
   s3_bucket:     '',
-  bedrock_model: 'anthropic.claude-3-sonnet-20240229-v1:0',
+  bedrock_model: 'us.amazon.nova-pro-v1:0',
   dynamo_table:  'DesktopPilotMemory',
   scan_dirs:     'Desktop,Documents,Downloads',
   require_approval_terminal: true,
@@ -111,7 +111,7 @@ export default function SettingsPanel() {
             <SettingField label="S3 Bucket" value={settings.s3_bucket}
               onChange={v => set('s3_bucket', v)} placeholder="desktoppilot-audio" />
             <SettingField label="Bedrock Model ID" value={settings.bedrock_model}
-              onChange={v => set('bedrock_model', v)} placeholder="anthropic.claude-3-sonnet..." />
+              onChange={v => set('bedrock_model', v)} placeholder="us.amazon.nova-pro-v1:0" />
             <SettingField label="DynamoDB Table" value={settings.dynamo_table}
               onChange={v => set('dynamo_table', v)} placeholder="DesktopPilotMemory" />
           </div>

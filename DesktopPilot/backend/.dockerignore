@@ -1,0 +1,15 @@
+# Never bake secrets or local state into the image
+.env
+.env.*
+*.db
+__pycache__/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+tests/
+user_profile.json
+# Desktop-only modules are not copied anyway, but exclude to be safe
+automation/
+indexer/
+main.py
+requirements.txt

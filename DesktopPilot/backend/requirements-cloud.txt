@@ -1,0 +1,10 @@
+# Cloud API dependencies (AWS App Runner container)
+# Only the packages needed for the cloud-safe routes — no Windows/desktop libs.
+fastapi==0.111.0
+uvicorn[standard]==0.30.1
+python-multipart==0.0.9
+boto3==1.34.131
+python-dotenv==1.0.1
+requests==2.32.3
+# Audio format conversion for /transcribe (PyAV bundles ffmpeg)
+av==12.3.0

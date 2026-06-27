@@ -59,6 +59,56 @@ ws_manager = WSManager()
 
 # ── Lifespan ──────────────────────────────────────────────────────────────────
 
+def _speak_greeting():
+    """
+    Speak a time-aware greeting when the app starts.
+    Runs in a background thread so it doesn't delay startup.
+    Waits 2 seconds for the SAPI engine to be fully ready first.
+    """
+    import threading, time, json
+    from datetime import datetime
+
+    def _greet():
+        time.sleep(2)  # Let the server fully start before speaking
+        try:
+            # Get user's first name from profile (fallback to "Sir")
+            name = "Sir"
+            try:
+                profile_path = os.path.join(os.path.dirname(__file__), "user_profile.json")
+                with open(profile_path, "r") as f:
+                    profile = json.load(f)
+                first = (profile.get("first_name") or "").strip()
+                full  = (profile.get("full_name") or "").strip()
+                if first:
+                    name = first
+                elif full and full.lower() != "john doe":
+                    name = full.split()[0]
+            except Exception:
+                pass
+
+            # Time-aware greeting
+            hour = datetime.now().hour
+            if 5 <= hour < 12:
+                period = "Good morning"
+            elif 12 <= hour < 17:
+                period = "Good afternoon"
+            elif 17 <= hour < 21:
+                period = "Good evening"
+            else:
+                period = "Hello"
+
+            greeting = f"{period}, {name}. DesktopPilot is ready. How can I help you today?"
+            log.info(f"Greeting: {greeting}")
+
+            from controllers.voice_output_controller import speak_nonblocking
+            speak_nonblocking(greeting)
+
+        except Exception as e:
+            log.warning(f"Greeting failed (non-fatal): {e}")
+
+    threading.Thread(target=_greet, daemon=True).start()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     log.info("DesktopPilot agent starting up")
@@ -78,6 +128,9 @@ async def lifespan(app: FastAPI):
     from voice.pipeline import schedule_prewarm
     schedule_prewarm()
     log.info("Bedrock pre-warm scheduled")
+    # Greet user on startup
+    _speak_greeting()
+    log.info("Startup greeting queued")
     yield
     stop_file_watcher()
     log.info("DesktopPilot agent shut down")

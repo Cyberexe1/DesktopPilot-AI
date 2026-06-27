@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { LogIn, UserPlus, Eye, EyeOff } from 'lucide-react'
+import { Cpu, Eye, EyeOff, AlertCircle } from 'lucide-react'
 import './LoginPanel.css'
 
 const API = 'http://localhost:8888'
@@ -46,11 +46,19 @@ export default function LoginPanel({ onLogin }) {
   return (
     <div className="login-panel">
       <div className="login-panel-card">
-        <h1 className="login-panel-brand">DesktopPilot AI</h1>
-        <p className="login-panel-sub">
-          {mode === 'login' ? 'Sign in to continue' : 'Create your account'}
-        </p>
 
+        {/* Logo */}
+        <div className="login-logo">
+          <div className="login-logo-icon">
+            <Cpu size={26} />
+          </div>
+          <h1 className="login-panel-brand">DesktopPilot AI</h1>
+          <p className="login-panel-sub">
+            {mode === 'login' ? 'Sign in to your account' : 'Create your account'}
+          </p>
+        </div>
+
+        {/* Tabs */}
         <div className="lp-tabs">
           <button className={`lp-tab ${mode === 'login' ? 'lp-tab-active' : ''}`}
             onClick={() => { setMode('login'); setError('') }}>
@@ -64,23 +72,11 @@ export default function LoginPanel({ onLogin }) {
 
         <form onSubmit={handleSubmit} className="lp-form">
           {mode === 'signup' && (
-            <input
-              className="lp-input"
-              type="text"
-              placeholder="Full Name"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              required
-            />
+            <input className="lp-input" type="text" placeholder="Full Name"
+              value={name} onChange={e => setName(e.target.value)} required />
           )}
-          <input
-            className="lp-input"
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            required
-          />
+          <input className="lp-input" type="email" placeholder="Email address"
+            value={email} onChange={e => setEmail(e.target.value)} required />
           <div className="lp-pw-wrap">
             <input
               className="lp-input"
@@ -92,20 +88,30 @@ export default function LoginPanel({ onLogin }) {
               minLength={6}
             />
             <button type="button" className="lp-pw-btn" onClick={() => setShowPw(s => !s)}>
-              {showPw ? <EyeOff size={14} /> : <Eye size={14} />}
+              {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
             </button>
           </div>
 
-          {error && <div className="lp-error">{error}</div>}
+          {error && (
+            <div className="lp-error">
+              <AlertCircle size={14} />
+              <span>{error}</span>
+            </div>
+          )}
 
           <button type="submit" className="lp-submit" disabled={loading}>
-            {loading ? 'Please wait...' : (mode === 'login' ? 'Sign In' : 'Create Account')}
+            {loading ? 'Please wait…' : (mode === 'login' ? 'Sign In' : 'Create Account')}
           </button>
 
           {mode === 'signup' && (
-            <p className="lp-note">You'll get <strong>100 free credits</strong></p>
+            <p className="lp-note">You'll get <strong>100 free credits</strong> to start</p>
           )}
         </form>
+
+        <div className="lp-footer">
+          Powered by AWS Bedrock · Amazon Transcribe
+        </div>
+
       </div>
     </div>
   )

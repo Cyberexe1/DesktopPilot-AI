@@ -12,6 +12,7 @@ import ClipboardPanel from './panels/ClipboardPanel'
 import FocusPanel     from './panels/FocusPanel'
 import LoginPanel     from './panels/LoginPanel'
 import StatusBar      from './components/StatusBar'
+import SplashScreen   from './components/SplashScreen'
 import { AgentProvider } from './context/AgentContext'
 import './styles/app.css'
 
@@ -77,8 +78,9 @@ function AppShell() {
 }
 
 export default function App() {
-  const [user, setUser]       = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [user, setUser]         = useState(null)
+  const [loading, setLoading]   = useState(true)
+  const [splash, setSplash]     = useState(true)   // show splash first
 
   useEffect(() => {
     const saved = localStorage.getItem('cipher_electron_user')
@@ -96,6 +98,11 @@ export default function App() {
   const handleLogout = () => {
     setUser(null)
     localStorage.removeItem('cipher_electron_user')
+  }
+
+  // Always show splash on cold start; let it drive its own exit
+  if (splash) {
+    return <SplashScreen onComplete={() => setSplash(false)} />
   }
 
   if (loading) return null

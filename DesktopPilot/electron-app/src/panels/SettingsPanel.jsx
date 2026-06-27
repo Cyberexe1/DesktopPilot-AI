@@ -64,23 +64,25 @@ export default function SettingsPanel() {
         <div className="card settings-section">
           <p className="section-label">Backend Status</p>
           <div className="backend-status">
-            <div className={`status-row ${backendReady ? 'status-ok' : 'status-warn'}`}>
+            <div className={`status-row-item ${backendReady ? 'status-ok' : 'status-warn'}`}>
               <span className="status-dot-sm" />
-              <span className="text-sm">FastAPI — {backendReady ? 'Running on :8888' : 'Starting...'}</span>
+              <span className="status-label">FastAPI Backend</span>
+              <span className="status-value">{backendReady ? 'Running on :8888' : 'Starting…'}</span>
             </div>
-            <div className={`status-row ${wsConnected ? 'status-ok' : 'status-warn'}`}>
+            <div className={`status-row-item ${wsConnected ? 'status-ok' : 'status-warn'}`}>
               <span className="status-dot-sm" />
-              <span className="text-sm">WebSocket — {wsConnected ? 'Connected (/ws)' : 'Disconnected'}</span>
+              <span className="status-label">WebSocket</span>
+              <span className="status-value">{wsConnected ? 'Connected (/ws)' : 'Disconnected'}</span>
             </div>
             <div className="status-actions">
-              <button className="btn btn-secondary" onClick={testBackend} disabled={testing}>
-                {testing ? <RefreshCw size={12} className="spin" /> : <RefreshCw size={12} />}
+              <button className="btn btn-secondary btn-sm" onClick={testBackend} disabled={testing}>
+                {testing ? <RefreshCw size={11} className="spin" /> : <RefreshCw size={11} />}
                 Test Connection
               </button>
-              <button className="btn btn-secondary" onClick={() => window.dp?.restartBackend()}>
+              <button className="btn btn-secondary btn-sm" onClick={() => window.dp?.restartBackend()}>
                 Restart Backend
               </button>
-              <button className="btn btn-secondary" onClick={async () => {
+              <button className="btn btn-secondary btn-sm" onClick={async () => {
                 const n = await reindexFiles()
                 addLog(`Re-indexed ${n} files`, 'success')
               }}>

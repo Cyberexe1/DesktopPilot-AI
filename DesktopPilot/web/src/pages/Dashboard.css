@@ -1,18 +1,177 @@
-.web-dashboard { padding: 2rem 1.5rem; min-height: calc(100vh - 60px); }
+/* ── Dashboard layout: fixed sidebar + scrollable main ── */
+.dash-layout {
+  display: flex;
+  min-height: 100vh;
+  background: #000000;
+}
 
-.dash-header {
-  display: flex; align-items: flex-start; justify-content: space-between;
-  margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;
+/* ── Sidebar ── */
+.dash-sidebar {
+  width: 248px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1.25rem 0.9rem;
+  background: #0a0a0a;
+  border-right: 1px solid #1e1e1e;
+}
+
+.dash-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.6rem 1rem;
+  text-decoration: none;
+}
+.dash-brand:hover { text-decoration: none; }
+.dash-brand-mark {
+  width: 14px; height: 14px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, #ff3322, #cc2200);
+  box-shadow: 0 0 12px rgba(204, 34, 0, 0.7);
+}
+.dash-brand-text {
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  color: #fff;
+  text-shadow: 0 0 20px rgba(204, 34, 0, 0.5);
+}
+
+.dash-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.dash-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #888;
+  background: transparent;
+  border: none;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  width: 100%;
+  text-align: left;
+}
+.dash-nav-item:hover { background: #141414; color: #fff; text-decoration: none; }
+.dash-nav-item--active {
+  background: rgba(204, 34, 0, 0.12);
+  color: #ff3322;
+  box-shadow: inset 2px 0 0 #cc2200;
+}
+
+.dash-nav-divider {
+  height: 1px;
+  background: #1a1a1a;
+  margin: 0.5rem 0.5rem;
+}
+
+/* Push footer to bottom */
+.dash-sidebar-footer {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #1a1a1a;
+}
+
+.dash-credits-box {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #000;
+  border: 1px solid #1e1e1e;
+  border-radius: 8px;
+  padding: 0.5rem 0.7rem;
+}
+
+.dash-user {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.dash-user-avatar {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #cc2200, #ff3322);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.dash-user-name {
+  flex: 1;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #ccc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dash-logout {
+  background: transparent;
+  border: 1px solid #1e1e1e;
+  border-radius: 6px;
+  color: #888;
+  padding: 5px 7px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: all 0.15s;
+}
+.dash-logout:hover { color: #ff3322; border-color: #cc2200; }
+
+/* ── Main content ── */
+.dash-main {
+  flex: 1;
+  min-width: 0;
+  padding: 2rem 2.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+.dash-main-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 .dash-title { font-size: 1.5rem; font-weight: 700; }
+
+/* Responsive: collapse sidebar labels on narrow screens */
+@media (max-width: 720px) {
+  .dash-sidebar { width: 64px; padding: 1.25rem 0.5rem; }
+  .dash-brand-text,
+  .dash-nav-item span,
+  .dash-credits-box .text-xs,
+  .dash-user-name { display: none; }
+  .dash-nav-item { justify-content: center; }
+  .dash-main { padding: 1.5rem 1rem; }
+}
 
 /* Agent online pill */
 .agent-pill {
   display: inline-flex; align-items: center; gap: 0.3rem;
-  padding: 0.2rem 0.6rem; border-radius: 999px;
+  padding: 0.3rem 0.6rem; border-radius: 999px;
   font-size: 0.72rem; font-weight: 500;
+  justify-content: center;
 }
-.agent-online  { background: #16532920; color: var(--success); border: 1px solid #22c55e30; }
+.agent-online  { background: #4a0c0820; color: var(--success); border: 1px solid #e0302030; }
 .agent-offline { background: var(--surface); color: var(--muted); border: 1px solid var(--border); }
 
 /* Live execution feed */
@@ -23,8 +182,8 @@
   padding: 0.3rem 0.4rem; border-radius: 5px; font-size: 0.8rem;
 }
 .live-step--pending { opacity: 0.45; }
-.live-step--done    { background: #16532910; }
-.live-step--failed  { background: #7f1d1d10; }
+.live-step--done    { background: #4a0c0810; }
+.live-step--failed  { background: #3d0a0010; }
 .live-dot {
   width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
   background: var(--muted);
@@ -43,22 +202,7 @@
 .btn-refresh:hover { background: var(--surface3); }
 .btn-refresh:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.credits-display {
-  display: flex; align-items: center; gap: 0.4rem;
-  background: var(--surface); border: 1px solid var(--border);
-  padding: 0.5rem 1rem; border-radius: var(--radius);
-}
 .credits-count { font-size: 1.25rem; font-weight: 700; color: var(--accent); }
-
-/* Tabs */
-.dash-tabs { display: flex; gap: 0.25rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); }
-.dash-tab {
-  padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 500;
-  background: transparent; color: var(--muted);
-  border-bottom: 2px solid transparent; transition: color 0.15s, border-color 0.15s;
-}
-.dash-tab:hover { color: var(--text); }
-.dash-tab--active { color: var(--accent); border-bottom-color: var(--accent); }
 
 .dash-section { display: flex; flex-direction: column; gap: 1rem; }
 
@@ -71,9 +215,9 @@
   width: 38px; height: 38px; border-radius: var(--radius);
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
-.stat-icon--accent  { background: #1e3a5f40; color: var(--accent); }
-.stat-icon--success { background: #16532940; color: var(--success); }
-.stat-icon--warning { background: #78350f40; color: var(--warning); }
+.stat-icon--accent  { background: #3d0a0040; color: var(--accent); }
+.stat-icon--success { background: #4a0c0840; color: var(--success); }
+.stat-icon--warning { background: #5c100840; color: var(--warning); }
 .stat-value { font-size: 1.25rem; font-weight: 700; }
 
 .dash-card { display: flex; flex-direction: column; gap: 0.5rem; }

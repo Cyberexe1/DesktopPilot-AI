@@ -1,12 +1,54 @@
-.memory-card { margin-bottom: 0.75rem; }
-.memory-card-header { display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.5rem; }
-.memory-value { display: flex; flex-direction: column; gap: 0.2rem; }
-.memory-name { font-size: 0.875rem; font-weight: 600; }
+/* ── Memory Panel ── */
+.memory-card { margin-bottom: var(--sp-3); }
 
-.recent-list { list-style: none; display: flex; flex-direction: column; gap: 0.35rem; margin-top: 0.5rem; }
-.recent-item { display: flex; align-items: center; gap: 0.4rem; }
+.memory-card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+}
+.memory-card-header .section-label { margin: 0; }
 
-.memory-info { background: var(--surface2); }
-.info-list { list-style: none; display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.5rem; }
-.info-list li { padding-left: 0.75rem; position: relative; line-height: 1.5; }
-.info-list li::before { content: '→'; position: absolute; left: 0; color: var(--accent); }
+.memory-value { display: flex; flex-direction: column; gap: var(--sp-2); }
+.memory-name {
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.recent-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+}
+.recent-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  transition: border-color var(--dur-fast);
+  animation: fadeInUp var(--dur-base) both;
+}
+.recent-item:hover { border-color: rgba(204,34,0,0.2); }
+
+.info-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  margin-top: var(--sp-3);
+}
+.info-list li {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: flex-start;
+  padding-left: var(--sp-1);
+  line-height: 1.6;
+  color: var(--text3);
+}
+.info-list-icon { color: var(--accent2); margin-top: 1px; flex-shrink: 0; }

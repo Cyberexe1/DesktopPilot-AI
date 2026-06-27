@@ -1,29 +1,36 @@
+/* ── Meeting Panel ── */
 .meeting-body {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--sp-4);
   align-items: center;
+  padding-bottom: var(--sp-6);
 }
 
 /* ── Setup ── */
 .meeting-setup {
   width: 100%;
   max-width: 480px;
-  animation: fadeInUp var(--dur-base) var(--ease-out) both;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  animation: fadeInUp var(--dur-base) both;
 }
 
 .meeting-start-btn {
   width: 100%;
-  justify-content: center;
-  margin-top: 1rem;
-  padding: 0.65rem;
-  font-size: 0.9rem;
+  height: 42px;
+  font-size: var(--text-base);
+  font-weight: 600;
 }
 
 .meeting-hint {
-  margin-top: 0.75rem;
   text-align: center;
-  line-height: 1.6;
+  line-height: 1.65;
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
 }
 
 /* ── Recording ── */
@@ -31,13 +38,12 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1rem;
-  padding: 2.5rem 1rem 1rem;
-  animation: fadeInUp var(--dur-base) var(--ease-out) both;
+  gap: var(--sp-5);
+  padding: var(--sp-12) var(--sp-4) var(--sp-4);
+  animation: fadeInUp var(--dur-base) both;
 }
 
 .rec-orb-wrap {
-  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -45,57 +51,54 @@
 
 .rec-orb {
   position: relative;
-  width: 110px; height: 110px;
+  width: 120px; height: 120px;
   border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #2a0400, #0f0000, #000);
+  background: radial-gradient(circle at 35% 30%, #1e0200, #0a0000, #000);
   border: 1.5px solid var(--accent2);
   color: var(--accent2);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 30px rgba(255,51,34,0.4), 0 0 60px rgba(204,34,0,0.15);
+  box-shadow: 0 0 28px rgba(255,51,34,0.35), 0 0 56px rgba(204,34,0,0.12);
 }
 
 .rec-ring {
   position: absolute;
-  inset: -12px;
+  inset: -14px;
   border-radius: 50%;
   border: 1.5px solid var(--accent2);
   opacity: 0;
-  animation: pulse 1.8s ease-out infinite;
+  animation: pulse 2s ease-out infinite;
 }
-.rec-ring-2 { inset: -24px; animation-delay: 0.45s; }
-.rec-ring-3 { inset: -36px; animation-delay: 0.9s; border-width: 1px; border-color: var(--accent); }
+.rec-ring-2 { inset: -28px; animation-delay: 0.5s; }
+.rec-ring-3 { inset: -42px; animation-delay: 1s; border-width: 1px; border-color: var(--accent); }
 
 .rec-timer {
-  font-size: 2.2rem;
+  font-size: 2.4rem;
   font-weight: 700;
   color: var(--accent2);
-  letter-spacing: 0.05em;
-  text-shadow: 0 0 20px rgba(255,51,34,0.4);
+  letter-spacing: 0.04em;
+  font-family: 'JetBrains Mono', monospace;
+  text-shadow: 0 0 16px rgba(255,51,34,0.4);
 }
 
-.meeting-stop-btn {
-  margin-top: 0.5rem;
-  padding: 0.6rem 1.5rem;
-  font-size: 0.85rem;
-}
+.meeting-stop-btn { height: 40px; padding: 0 var(--sp-6); }
 
 /* ── Processing ── */
 .meeting-processing {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
-  padding: 3rem 1rem;
-  animation: fadeInUp var(--dur-base) var(--ease-out) both;
+  gap: var(--sp-3);
+  padding: var(--sp-16) var(--sp-4);
+  animation: fadeInUp var(--dur-base) both;
 }
 
 .proc-steps {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-  margin-top: 0.75rem;
+  gap: var(--sp-2);
+  margin-top: var(--sp-4);
   width: 100%;
   max-width: 320px;
 }
@@ -103,78 +106,63 @@
 .proc-step {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.3rem 0.5rem;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
   border-radius: var(--radius-sm);
-  background: rgba(204,34,0,0.06);
+  background: rgba(204,34,0,0.05);
   border-left: 2px solid var(--accent);
-  animation: fadeInUp var(--dur-base) var(--ease-out) both;
+  animation: fadeInUp var(--dur-base) both;
 }
 .proc-step:nth-child(1) { animation-delay: 0.05s; }
-.proc-step:nth-child(2) { animation-delay: 0.15s; }
-.proc-step:nth-child(3) { animation-delay: 0.25s; }
-.proc-step:nth-child(4) { animation-delay: 0.35s; }
+.proc-step:nth-child(2) { animation-delay: 0.12s; }
+.proc-step:nth-child(3) { animation-delay: 0.19s; }
+.proc-step:nth-child(4) { animation-delay: 0.26s; }
 
 /* ── Results ── */
 .meeting-results {
   width: 100%;
   max-width: 600px;
-  animation: fadeInUp var(--dur-base) var(--ease-out) both;
+  animation: fadeInUp var(--dur-base) both;
 }
 
-.result-summary {
-  line-height: 1.7;
-}
-
-.result-section {
-  background: rgba(10,10,10,0.7);
-}
+.result-section { margin-top: var(--sp-3); }
 
 .result-list {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  margin-top: 0.4rem;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
 }
 
 .result-item {
   display: flex;
   align-items: flex-start;
-  gap: 0.5rem;
-  padding: 0.3rem 0.4rem;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
   border-radius: var(--radius-sm);
   transition: background var(--dur-fast);
-  animation: slideInLeft var(--dur-base) var(--ease-out) both;
+  animation: slideInLeft var(--dur-base) both;
 }
-.result-item:hover { background: rgba(204,34,0,0.06); }
+.result-item:hover { background: var(--surface2); }
 
-.result-checkbox {
-  color: var(--muted);
-  flex-shrink: 0;
-  font-size: 0.9rem;
-  margin-top: 1px;
-}
-.result-check {
-  flex-shrink: 0;
-  font-size: 0.9rem;
-  margin-top: 1px;
-}
+.result-checkbox { color: var(--muted); flex-shrink: 0; font-size: var(--text-base); }
+.result-check    { flex-shrink: 0; color: var(--success); font-size: var(--text-base); }
 
 .attendees-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
-  margin-top: 0.4rem;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
 }
 
 .result-footer {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  margin-top: 0.75rem;
-  padding: 0.4rem 0.6rem;
+  gap: var(--sp-2);
+  margin-top: var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
   border-radius: var(--radius-sm);
-  background: rgba(255,255,255,0.02);
-  border: 1px solid var(--border);
+  background: var(--surface2);
+  border: 1px solid var(--border2);
 }

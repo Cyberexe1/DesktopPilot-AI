@@ -4,24 +4,41 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg:        #0d0f14;
-  --surface:   #161b25;
-  --surface2:  #1e2535;
-  --border:    #2a3347;
-  --accent:    #4f8ef7;
-  --accent2:   #7c5cfc;
-  --success:   #22c55e;
-  --warning:   #f59e0b;
-  --danger:    #ef4444;
-  --text:      #e8eaf0;
-  --muted:     #7a8499;
+  /* ── Core surfaces — pure blacks (ASTRA theme) ── */
+  --bg:        #000000;
+  --surface:   #0a0a0a;
+  --surface2:  #111111;
+  --surface3:  #1a1a1a;
+  --border:    #1e1e1e;
+  --border2:   #2a2a2a;
+
+  /* ── Accent — red only ── */
+  --accent:    #cc2200;
+  --accent2:   #ff3322;
+  --accent3:   #ff1a00;
+  --accent-dim:#3d0a00;
+
+  /* ── Semantic — red mapped ── */
+  --success:   #e03020;
+  --warning:   #ff4433;
+  --danger:    #cc2200;
+
+  /* ── Text — white spectrum ── */
+  --text:      #ffffff;
+  --text2:     #cccccc;
+  --muted:     #666666;
+
+  /* ── Glow ── */
+  --glow-accent: 0 0 20px rgba(204,34,0,0.4), 0 0 50px rgba(204,34,0,0.12);
+  --glow-red:    0 0 24px rgba(255,51,34,0.5);
+
   --radius:    10px;
-  --font:      'Inter', system-ui, sans-serif;
+  --font:      'Geist', 'Inter', system-ui, sans-serif;
 }
 
 html, body {
-  background: #0a0a0f;
-  color: #e1e2eb;
+  background: #000000;
+  color: #ffffff;
   font-family: 'Geist', 'Inter', system-ui, sans-serif;
   font-size: 15px;
   line-height: 1.6;
@@ -74,10 +91,10 @@ button {
   font-size: 0.75rem;
   font-weight: 600;
 }
-.badge-success { background: #16532920; color: var(--success); border: 1px solid #22c55e40; }
-.badge-warning { background: #78350f20; color: var(--warning); border: 1px solid #f59e0b40; }
-.badge-danger  { background: #7f1d1d20; color: var(--danger);  border: 1px solid #ef444440; }
-.badge-info    { background: #1e3a5f20; color: var(--accent);  border: 1px solid #4f8ef740; }
+.badge-success { background: #4a0c0820; color: var(--success); border: 1px solid #e0302040; }
+.badge-warning { background: #5c100820; color: var(--warning); border: 1px solid #ff443340; }
+.badge-danger  { background: #3d0a0020; color: var(--danger);  border: 1px solid #cc220040; }
+.badge-info    { background: #3d0a0020; color: var(--accent);  border: 1px solid #cc220040; }
 
 /* ── Scrollbar ── */
 ::-webkit-scrollbar { width: 6px; }

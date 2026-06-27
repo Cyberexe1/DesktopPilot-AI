@@ -1,11 +1,11 @@
-/* ── Navbar — DesktopPilot AI Design System ── */
+/* ── Navbar — ASTRA Design System (black + red) ── */
 .nav-header {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(10, 10, 15, 0.8);
+  background: rgba(0, 0, 0, 0.82);
   backdrop-filter: blur(12px);
-  border-bottom: 1px solid #424753;
+  border-bottom: 1px solid #1e1e1e;
 }
 
 .nav-inner {
@@ -26,9 +26,10 @@
 .nav-brand {
   font-size: 20px;
   font-weight: 700;
-  color: #acc7ff;
-  letter-spacing: -0.02em;
+  color: #ff3322;
+  letter-spacing: 0.04em;
   text-decoration: none;
+  text-shadow: 0 0 16px rgba(204, 34, 0, 0.5);
 }
 .nav-brand:hover { text-decoration: none; }
 
@@ -39,12 +40,12 @@
 
 .nav-link {
   font-size: 16px;
-  color: #8c909e;
+  color: #888;
   text-decoration: none;
   transition: color 0.15s;
 }
-.nav-link:hover { color: #acc7ff; text-decoration: none; }
-.nav-link-active { color: #acc7ff; border-bottom: 2px solid #acc7ff; padding-bottom: 2px; }
+.nav-link:hover { color: #ff3322; text-decoration: none; }
+.nav-link-active { color: #ff3322; border-bottom: 2px solid #cc2200; padding-bottom: 2px; }
 
 .nav-right {
   display: flex;
@@ -56,8 +57,8 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  background: #272a31;
-  border: 1px solid #424753;
+  background: #111111;
+  border: 1px solid #1e1e1e;
   border-radius: 9999px;
   padding: 4px 12px;
 }
@@ -69,7 +70,7 @@
   flex-shrink: 0;
 }
 .agent-online .agent-dot-nav { background: #22c55e; animation: pulse-dot 2s infinite; }
-.agent-offline .agent-dot-nav { background: #8c909e; }
+.agent-offline .agent-dot-nav { background: #666; }
 
 @keyframes pulse-dot {
   0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
@@ -81,21 +82,21 @@
   font-family: 'JetBrains Mono', monospace;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: #8c909e;
+  color: #888;
 }
 
 .credits-badge-nav {
   display: flex;
   align-items: center;
   gap: 4px;
-  background: rgba(80, 143, 248, 0.1);
-  border: 1px solid rgba(80, 143, 248, 0.3);
+  background: rgba(204, 34, 0, 0.1);
+  border: 1px solid rgba(204, 34, 0, 0.3);
   border-radius: 8px;
   padding: 4px 10px;
   font-size: 11px;
   font-weight: 700;
   font-family: 'JetBrains Mono', monospace;
-  color: #acc7ff;
+  color: #ff3322;
 }
 
 @media (max-width: 768px) {
@@ -113,25 +114,25 @@
 
 .user-name {
   font-size: 13px;
-  color: #c2c6d5;
+  color: #cccccc;
   font-weight: 500;
 }
 
 .logout-btn {
   background: transparent;
-  border: 1px solid #424753;
+  border: 1px solid #1e1e1e;
   border-radius: 6px;
-  color: #8c909e;
+  color: #888;
   padding: 5px 8px;
   cursor: pointer;
   display: flex;
   align-items: center;
   transition: all 0.15s;
 }
-.logout-btn:hover { color: #ffb4ab; border-color: #ffb4ab; }
+.logout-btn:hover { color: #ff3322; border-color: #cc2200; }
 
 .signin-btn {
-  background: #4f8ef7;
+  background: #cc2200;
   color: #fff;
   border-radius: 8px;
   padding: 7px 16px;
@@ -139,5 +140,6 @@
   font-weight: 500;
   text-decoration: none;
   transition: all 0.15s;
+  box-shadow: 0 0 16px rgba(204, 34, 0, 0.3);
 }
-.signin-btn:hover { filter: brightness(1.1); text-decoration: none; }
+.signin-btn:hover { filter: brightness(1.15); text-decoration: none; }

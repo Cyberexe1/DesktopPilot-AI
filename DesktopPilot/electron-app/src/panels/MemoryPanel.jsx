@@ -75,7 +75,7 @@ export default function MemoryPanel() {
         </div>
 
         {/* How memory works */}
-        <div className="card memory-info">
+        <div className="card memory-card">
           <p className="section-label">How it works</p>
           <ul className="info-list">
             {[
@@ -84,7 +84,10 @@ export default function MemoryPanel() {
               'In Phase 3, memory syncs to Amazon DynamoDB across sessions.',
               'Memory enriches every Bedrock prompt for smarter responses.',
             ].map((line, i) => (
-              <li key={i} className="text-xs text-muted">{line}</li>
+              <li key={i}>
+                <Zap size={11} className="info-list-icon" />
+                <span className="text-xs text-muted">{line}</span>
+              </li>
             ))}
           </ul>
         </div>

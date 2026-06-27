@@ -1,46 +1,47 @@
+/* ── Focus Panel ── */
 .focus-body {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--sp-4);
   align-items: center;
-  padding-bottom: 1.5rem;
+  padding-bottom: var(--sp-6);
 }
 
-/* ── Active ── */
+/* ── Active session ── */
 .focus-active {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1.1rem;
-  padding: 2rem 1rem 1rem;
+  gap: var(--sp-5);
+  padding: var(--sp-10) var(--sp-4) var(--sp-4);
   width: 100%;
-  animation: fadeInUp var(--dur-base) var(--ease-out) both;
+  animation: fadeInUp var(--dur-base) both;
 }
 
 .focus-mode-badge {
-  padding: 0.3rem 1rem;
-  border-radius: 999px;
-  font-size: 0.8rem;
-  font-weight: 700;
-  letter-spacing: 0.03em;
+  padding: var(--sp-2) var(--sp-5);
+  border-radius: var(--radius-full);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 .badge-focus {
-  background: rgba(204,34,0,0.15);
+  background: rgba(204,34,0,0.1);
   color: var(--accent2);
-  border: 1px solid rgba(204,34,0,0.35);
-  box-shadow: 0 0 12px rgba(204,34,0,0.2);
-  animation: pulseGlow 2s ease-in-out infinite;
+  border: 1px solid rgba(204,34,0,0.25);
+  box-shadow: 0 0 12px rgba(204,34,0,0.15);
+  animation: borderGlow 2.5s ease-in-out infinite;
 }
 .badge-break {
-  background: rgba(255,255,255,0.06);
-  color: var(--text2);
-  border: 1px solid var(--border2);
+  background: var(--success-dim);
+  color: var(--success);
+  border: 1px solid rgba(34,197,94,0.2);
 }
 
 /* SVG ring timer */
 .focus-ring-wrap {
   position: relative;
-  width: 160px; height: 160px;
+  width: 180px; height: 180px;
 }
 .focus-ring-svg {
   width: 100%; height: 100%;
@@ -48,7 +49,7 @@
 }
 .focus-ring-track {
   fill: none;
-  stroke: #1a1a1a;
+  stroke: var(--surface3);
   stroke-width: 8;
 }
 .focus-ring-fill {
@@ -57,9 +58,14 @@
   stroke-linecap: round;
   transition: stroke-dashoffset 1s linear;
 }
-.ring-focus { stroke: var(--accent2); filter: drop-shadow(0 0 6px rgba(255,51,34,0.5)); }
-.ring-break { stroke: #444444; }
-
+.ring-focus {
+  stroke: var(--accent2);
+  filter: drop-shadow(0 0 6px rgba(255,51,34,0.5));
+}
+.ring-break {
+  stroke: var(--success);
+  filter: drop-shadow(0 0 4px rgba(34,197,94,0.4));
+}
 .focus-ring-content {
   position: absolute;
   inset: 0;
@@ -67,25 +73,17 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.2rem;
+  gap: var(--sp-1);
 }
-
 .focus-time {
-  font-size: 2rem;
+  font-size: 2.2rem;
   font-weight: 800;
   color: var(--text);
-  font-family: 'Consolas', monospace;
-  letter-spacing: 0.02em;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: -0.02em;
 }
-
-.focus-goal {
-  text-align: center;
-  font-style: italic;
-}
-
-.focus-stop-btn {
-  padding: 0.55rem 1.5rem;
-}
+.focus-goal { text-align: center; }
+.focus-stop-btn { height: 40px; padding: 0 var(--sp-6); }
 
 /* ── Setup ── */
 .focus-setup {
@@ -93,101 +91,101 @@
   max-width: 480px;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  animation: fadeInUp var(--dur-base) var(--ease-out) both;
+  gap: var(--sp-4);
+  animation: fadeInUp var(--dur-base) both;
 }
-
-.focus-config {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
+.focus-config { display: flex; flex-direction: column; gap: var(--sp-4); }
 
 .focus-config-row {
   display: flex;
-  gap: 0.75rem;
+  gap: var(--sp-3);
   flex-wrap: wrap;
 }
-
-.focus-config-field {
-  flex: 1;
-  min-width: 80px;
-}
+.focus-config-field { flex: 1; min-width: 80px; }
+.focus-config-field .section-label { margin-bottom: var(--sp-2); }
 
 /* Stepper */
 .focus-stepper {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  margin-top: 0.3rem;
-}
-.stepper-btn {
-  width: 26px; height: 26px;
-  border-radius: var(--radius-sm);
+  gap: var(--sp-2);
   background: var(--surface2);
   border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  padding: var(--sp-1) var(--sp-2);
+}
+.stepper-btn {
+  width: 28px; height: 28px;
+  border-radius: var(--radius-xs);
+  background: var(--surface3);
+  border: 1px solid var(--border2);
   color: var(--text);
-  font-size: 1rem;
+  font-size: var(--text-lg);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background var(--dur-fast), border-color var(--dur-fast);
+  transition: all var(--dur-fast);
   line-height: 1;
+  flex-shrink: 0;
 }
-.stepper-btn:hover { background: var(--surface3); border-color: var(--accent2); }
+.stepper-btn:hover { background: var(--surface4); border-color: var(--accent2); color: var(--accent2); }
 .stepper-val {
   flex: 1;
   text-align: center;
-  font-size: 0.82rem;
-  font-weight: 600;
+  font-size: var(--text-sm);
+  font-weight: 700;
   color: var(--text);
-  font-family: 'Consolas', monospace;
+  font-family: 'JetBrains Mono', monospace;
 }
 
 .focus-calc {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.3rem 0.5rem;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
   border-radius: var(--radius-sm);
-  background: rgba(204,34,0,0.06);
-  border: 1px solid rgba(204,34,0,0.15);
+  background: rgba(204,34,0,0.05);
+  border: 1px solid rgba(204,34,0,0.12);
 }
 
 .focus-blocked-info {
   text-align: center;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface2);
+  border: 1px solid var(--border);
 }
 
 .focus-start-btn {
   width: 100%;
-  justify-content: center;
-  padding: 0.65rem;
-  font-size: 0.88rem;
+  height: 42px;
+  font-size: var(--text-base);
+  font-weight: 600;
 }
 
-/* ── History ── */
+/* ── Past sessions ── */
 .focus-history {
   width: 100%;
+  max-width: 480px;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--sp-3);
 }
 
 .session-card {
-  padding: 0.7rem 0.85rem;
-  animation: fadeInUp var(--dur-base) var(--ease-out) both;
+  padding: var(--sp-4);
+  animation: fadeInUp var(--dur-base) both;
 }
-
 .session-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--sp-3);
 }
-
 .session-stats {
   display: flex;
-  gap: 0.3rem;
+  gap: var(--sp-2);
   flex-wrap: wrap;
   justify-content: flex-end;
 }

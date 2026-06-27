@@ -55,30 +55,38 @@ def _convert_to_wav(audio_bytes: bytes) -> bytes:
     """
     import av
     import io
-    import array
 
     try:
-        # Read input audio
         input_buf = io.BytesIO(audio_bytes)
         output_buf = io.BytesIO()
 
         input_container = av.open(input_buf)
         output_container = av.open(output_buf, mode='w', format='wav')
 
-        # Create output stream: 16kHz mono PCM s16
-        output_stream = output_container.add_stream('pcm_s16le', rate=16000, layout='mono')
+        # Output stream: 16kHz mono PCM s16
+        output_stream = output_container.add_stream('pcm_s16le', rate=16000)
+        output_stream.layout = 'mono'
+
+        # AudioResampler handles format/rate/layout conversion (replaces .reformat())
+        resampler = av.AudioResampler(
+            format='s16',
+            layout='mono',
+            rate=16000,
+        )
 
         for frame in input_container.decode(audio=0):
-            frame.pts = None
-            # Resample to 16kHz mono
-            for packet in output_stream.encode(frame.reformat(
-                sample_rate=16000,
-                format='s16',
-                layout='mono'
-            )):
+            for resampled_frame in resampler.resample(frame):
+                resampled_frame.pts = None
+                for packet in output_stream.encode(resampled_frame):
+                    output_container.mux(packet)
+
+        # Flush resampler
+        for resampled_frame in resampler.resample(None):
+            resampled_frame.pts = None
+            for packet in output_stream.encode(resampled_frame):
                 output_container.mux(packet)
 
-        # Flush remaining
+        # Flush encoder
         for packet in output_stream.encode(None):
             output_container.mux(packet)
 

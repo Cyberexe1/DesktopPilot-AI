@@ -1,20 +1,21 @@
-/* ── Login Page ── */
+/* ── Login Page — ASTRA theme (black + red) ── */
 .login-page {
   min-height: calc(100vh - 70px);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: #0a0a0f;
+  background: #000000;
 }
 
 .login-card {
   width: 100%;
   max-width: 400px;
-  background: #12121a;
-  border: 1px solid #424753;
+  background: #0a0a0a;
+  border: 1px solid #1e1e1e;
   border-radius: 16px;
   padding: 40px 32px;
+  box-shadow: 0 0 50px rgba(204, 34, 0, 0.06);
 }
 
 .login-header {
@@ -25,22 +26,23 @@
 .login-brand {
   font-size: 28px;
   font-weight: 700;
-  color: #acc7ff;
-  letter-spacing: -0.02em;
+  color: #ff3322;
+  letter-spacing: 0.04em;
   margin-bottom: 8px;
+  text-shadow: 0 0 24px rgba(204, 34, 0, 0.5);
 }
 
 .login-sub {
   font-size: 14px;
-  color: #8c909e;
+  color: #888;
 }
 
 /* Auth tabs */
 .auth-tabs {
   display: flex;
   gap: 4px;
-  background: #0a0a0f;
-  border: 1px solid #424753;
+  background: #000000;
+  border: 1px solid #1e1e1e;
   border-radius: 8px;
   padding: 4px;
   margin-bottom: 24px;
@@ -56,27 +58,27 @@
   border-radius: 6px;
   font-size: 13px;
   font-weight: 500;
-  color: #8c909e;
+  color: #888;
   background: transparent;
   border: none;
   cursor: pointer;
   transition: all 0.15s;
 }
-.auth-tab:hover { color: #e1e2eb; }
-.auth-tab-active { background: #272a31; color: #acc7ff; }
+.auth-tab:hover { color: #fff; }
+.auth-tab-active { background: #1a1a1a; color: #ff3322; }
 
 .form-hint {
   font-size: 11px;
-  color: #8c909e;
+  color: #888;
   margin-top: 4px;
 }
 
 .signup-note {
   font-size: 13px;
-  color: #8c909e;
+  color: #888;
   text-align: center;
 }
-.signup-note strong { color: #acc7ff; }
+.signup-note strong { color: #ff3322; }
 
 .login-form {
   display: flex;
@@ -93,22 +95,22 @@
 .form-label {
   font-size: 13px;
   font-weight: 500;
-  color: #c2c6d5;
+  color: #cccccc;
 }
 
 .form-input {
-  background: #0a0a0f;
-  border: 1px solid #424753;
+  background: #000000;
+  border: 1px solid #1e1e1e;
   border-radius: 8px;
   padding: 12px 14px;
   font-size: 14px;
-  color: #e1e2eb;
+  color: #ffffff;
   font-family: inherit;
   outline: none;
   transition: border-color 0.15s;
   width: 100%;
 }
-.form-input:focus { border-color: #4f8ef7; box-shadow: 0 0 0 2px rgba(79, 142, 247, 0.15); }
+.form-input:focus { border-color: #cc2200; box-shadow: 0 0 0 2px rgba(204, 34, 0, 0.18); }
 .form-input::placeholder { color: #555; }
 
 .password-wrapper {
@@ -122,19 +124,19 @@
   transform: translateY(-50%);
   background: none;
   border: none;
-  color: #8c909e;
+  color: #888;
   cursor: pointer;
   padding: 4px;
 }
-.pw-toggle:hover { color: #acc7ff; }
+.pw-toggle:hover { color: #ff3322; }
 
 .login-error {
-  background: rgba(147, 0, 10, 0.15);
-  border: 1px solid rgba(255, 180, 171, 0.3);
+  background: rgba(204, 34, 0, 0.15);
+  border: 1px solid rgba(255, 51, 34, 0.35);
   border-radius: 8px;
   padding: 10px 14px;
   font-size: 13px;
-  color: #ffb4ab;
+  color: #ff6655;
 }
 
 .login-btn {
@@ -142,7 +144,7 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: #4f8ef7;
+  background: #cc2200;
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -152,6 +154,7 @@
   cursor: pointer;
   transition: all 0.15s;
   margin-top: 4px;
+  box-shadow: 0 0 20px rgba(204, 34, 0, 0.3);
 }
-.login-btn:hover { filter: brightness(1.1); }
+.login-btn:hover { filter: brightness(1.15); }
 .login-btn:disabled { opacity: 0.6; cursor: not-allowed; }

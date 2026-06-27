@@ -1,118 +1,212 @@
+/* ── Login Panel ── */
 .login-panel {
   display: flex;
   align-items: center;
   justify-content: center;
   height: 100vh;
   background: var(--bg);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Ambient bg glow */
+.login-panel::before {
+  content: '';
+  position: absolute;
+  width: 500px; height: 500px;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -60%);
+  background: radial-gradient(circle, rgba(180,20,0,0.12) 0%, transparent 65%);
+  filter: blur(60px);
+  pointer-events: none;
 }
 
 .login-panel-card {
-  width: 420px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 48px 36px;
-  text-align: center;
+  position: relative;
+  width: 400px;
+  background: rgba(8,8,8,0.95);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-xl);
+  padding: var(--sp-10) var(--sp-8);
+  box-shadow: var(--shadow-xl), 0 0 60px rgba(0,0,0,0.6);
+  animation: scaleIn 0.4s var(--ease-spring) both;
+}
+
+/* Top accent border */
+.login-panel-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 20%; right: 20%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,51,34,0.6), transparent);
+  border-radius: 0 0 0 0;
+}
+
+/* Logo area */
+.login-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-8);
+}
+
+.login-logo-icon {
+  width: 56px; height: 56px;
+  border-radius: var(--radius-md);
+  background: rgba(204,34,0,0.1);
+  border: 1px solid rgba(204,34,0,0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent2);
+  filter: drop-shadow(0 0 12px rgba(204,34,0,0.4));
 }
 
 .login-panel-brand {
-  font-size: 2rem;
+  font-size: var(--text-2xl);
   font-weight: 700;
-  color: var(--accent);
-  margin-bottom: 6px;
+  color: var(--text);
+  letter-spacing: -0.02em;
 }
 
 .login-panel-sub {
-  font-size: 0.95rem;
+  font-size: var(--text-sm);
   color: var(--muted);
-  margin-bottom: 28px;
+  text-align: center;
 }
 
+/* Tabs */
 .lp-tabs {
   display: flex;
-  gap: 4px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 4px;
-  margin-bottom: 28px;
+  gap: var(--sp-1);
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  padding: 3px;
+  margin-bottom: var(--sp-6);
 }
 
 .lp-tab {
   flex: 1;
-  padding: 10px;
-  border-radius: 6px;
-  font-size: 0.9rem;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius-xs);
+  font-size: var(--text-sm);
   font-weight: 500;
   color: var(--muted);
   background: transparent;
   border: none;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--dur-base);
+  text-align: center;
 }
-.lp-tab:hover { color: var(--text); }
-.lp-tab-active { background: var(--surface2); color: var(--accent); }
+.lp-tab:hover { color: var(--text2); }
+.lp-tab-active {
+  background: var(--surface4);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+}
 
+/* Form */
 .lp-form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--sp-3);
 }
 
 .lp-input {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 14px 16px;
-  font-size: 0.95rem;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--sp-4);
+  height: 44px;
+  font-size: var(--text-base);
   color: var(--text);
   font-family: inherit;
   outline: none;
   width: 100%;
-  transition: border-color 0.15s;
+  transition: border-color var(--dur-base), box-shadow var(--dur-base), background var(--dur-base);
 }
-.lp-input:focus { border-color: var(--accent); }
+.lp-input:focus {
+  border-color: var(--accent2);
+  background: var(--surface3);
+  box-shadow: 0 0 0 3px rgba(204,34,0,0.15);
+}
 .lp-input::placeholder { color: var(--muted); }
 
 .lp-pw-wrap { position: relative; }
-.lp-pw-wrap .lp-input { padding-right: 40px; }
+.lp-pw-wrap .lp-input { padding-right: 44px; }
 .lp-pw-btn {
   position: absolute;
-  right: 12px;
+  right: var(--sp-3);
   top: 50%;
   transform: translateY(-50%);
   background: none;
   border: none;
   color: var(--muted);
   cursor: pointer;
+  padding: var(--sp-1);
+  border-radius: var(--radius-xs);
+  transition: color var(--dur-fast);
 }
+.lp-pw-btn:hover { color: var(--text2); }
 
+/* Error */
 .lp-error {
-  background: #7f1d1d20;
-  border: 1px solid #ef444440;
-  border-radius: 8px;
-  padding: 10px 14px;
-  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  background: var(--danger-dim);
+  border: 1px solid rgba(239,68,68,0.25);
+  border-radius: var(--radius-sm);
+  padding: var(--sp-3) var(--sp-4);
+  font-size: var(--text-sm);
   color: var(--danger);
+  animation: fadeInDown var(--dur-base) both;
 }
 
+/* Submit */
 .lp-submit {
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  padding: 14px;
-  font-size: 1rem;
+  background: linear-gradient(135deg, #b81e00 0%, #cc2200 40%, #ff3322 100%);
+  color: #ffffff;
+  border: 1px solid rgba(255,51,34,0.3);
+  border-radius: var(--radius-sm);
+  height: 44px;
+  font-size: var(--text-base);
   font-weight: 600;
   cursor: pointer;
-  transition: opacity 0.15s;
-  margin-top: 4px;
+  transition: all var(--dur-base);
+  box-shadow: 0 2px 12px rgba(204,34,0,0.35);
+  margin-top: var(--sp-2);
+  letter-spacing: 0.01em;
 }
-.lp-submit:hover { opacity: 0.88; }
-.lp-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+.lp-submit:hover {
+  box-shadow: 0 4px 20px rgba(204,34,0,0.5);
+  transform: translateY(-1px);
+}
+.lp-submit:active { transform: scale(0.97) translateY(0); }
+.lp-submit:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
 
+/* Note */
 .lp-note {
-  font-size: 0.82rem;
+  font-size: var(--text-xs);
+  color: var(--muted);
+  text-align: center;
+  margin-top: var(--sp-1);
+}
+.lp-note strong { color: var(--accent2); }
+
+/* Footer */
+.lp-footer {
+  margin-top: var(--sp-6);
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--border);
+  text-align: center;
+  font-size: var(--text-xs);
   color: var(--muted);
 }
-.lp-note strong { color: var(--accent); }

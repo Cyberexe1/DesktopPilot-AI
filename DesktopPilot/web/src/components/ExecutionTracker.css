@@ -37,9 +37,9 @@
   transition: background 0.2s;
 }
 
-.tracker-step--done    { background: #16532910; }
-.tracker-step--failed  { background: #7f1d1d10; }
-.tracker-step--running { background: #1e3a5f10; }
+.tracker-step--done    { background: #4a0c0810; }
+.tracker-step--failed  { background: #3d0a0010; }
+.tracker-step--running { background: #cc220012; }
 .tracker-step--pending { opacity: 0.5; }
 
 .step-icon { flex-shrink: 0; }

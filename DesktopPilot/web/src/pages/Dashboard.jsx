@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Zap, CreditCard, Clock, Download, CheckCircle, Star, Wifi, WifiOff, RefreshCw } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { Zap, CreditCard, Clock, Download, CheckCircle, Star, Wifi, WifiOff, RefreshCw,
+         LayoutDashboard, History as HistoryIcon, Home, FileText, LogOut } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import './Dashboard.css'
 
@@ -32,7 +34,8 @@ const MOCK_HISTORY = [
 ]
 
 export default function Dashboard() {
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
   const [credits,    setCredits]    = useState(100)
   const [history,    setHistory]    = useState(MOCK_HISTORY)
   const [agentOnline,setAgentOnline]= useState(false)
@@ -133,57 +136,104 @@ export default function Dashboard() {
     return !t.includes('Yesterday') && !t.includes('2024') && !t.includes('2025')
   }).length
 
-  return (
-    <div className="web-dashboard container">
+  const handleLogout = () => {
+    logout()
+    navigate('/')
+  }
 
-      {/* Header */}
-      <div className="dash-header">
-        <div>
-          <h1 className="dash-title">Dashboard</h1>
-          <p className="text-muted text-sm">Manage your credits and view command history.</p>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+  const NAV_ITEMS = [
+    { id: 'overview', label: 'Overview', icon: <LayoutDashboard size={18} /> },
+    { id: 'credits',  label: 'Credits',  icon: <CreditCard size={18} /> },
+    { id: 'history',  label: 'History',  icon: <HistoryIcon size={18} /> },
+  ]
+
+  const TAB_TITLES = {
+    overview: 'Overview',
+    credits:  'Credits & Billing',
+    history:  'Command History',
+  }
+
+  return (
+    <div className="dash-layout">
+
+      {/* ── Sidebar ─────────────────────────────────────────── */}
+      <aside className="dash-sidebar">
+        <Link to="/" className="dash-brand">
+          <span className="dash-brand-mark" />
+          <span className="dash-brand-text">ASTRA</span>
+        </Link>
+
+        <nav className="dash-nav">
+          {NAV_ITEMS.map(item => (
+            <button
+              key={item.id}
+              className={`dash-nav-item ${activeTab === item.id ? 'dash-nav-item--active' : ''}`}
+              onClick={() => setActiveTab(item.id)}
+            >
+              {item.icon}
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </nav>
+
+        <div className="dash-nav-divider" />
+
+        <nav className="dash-nav">
+          <Link to="/" className="dash-nav-item">
+            <Home size={18} /><span>Home</span>
+          </Link>
+          <Link to="/docs" className="dash-nav-item">
+            <FileText size={18} /><span>Docs</span>
+          </Link>
+        </nav>
+
+        {/* Bottom: agent status + credits + user */}
+        <div className="dash-sidebar-footer">
           <div className={`agent-pill ${agentOnline ? 'agent-online' : 'agent-offline'}`}>
             {agentOnline ? <Wifi size={12} /> : <WifiOff size={12} />}
             <span>{agentOnline ? 'Agent Online' : 'Agent Offline'}</span>
           </div>
-          <div className="credits-display">
-            <Zap size={16} className="text-accent" />
+
+          <div className="dash-credits-box">
+            <Zap size={15} className="text-accent" />
             <span className="credits-count">{credits}</span>
-            <span className="text-muted text-sm">credits</span>
+            <span className="text-muted text-xs">credits</span>
+          </div>
+
+          <div className="dash-user">
+            <div className="dash-user-avatar">
+              {(user?.name?.[0] || 'U').toUpperCase()}
+            </div>
+            <span className="dash-user-name">{user?.name?.split(' ')[0] || 'User'}</span>
+            <button className="dash-logout" onClick={handleLogout} title="Sign out">
+              <LogOut size={15} />
+            </button>
           </div>
         </div>
-      </div>
+      </aside>
 
-      {/* Live execution feed — shown when agent is running a command */}
-      {liveSteps.length > 0 && (
-        <div className="card live-feed">
-          <p className="section-label" style={{ marginBottom: '0.5rem' }}>
-            ⚡ Live Execution
-          </p>
-          <ul className="live-steps">
-            {liveSteps.map((s, i) => (
-              <li key={i} className={`live-step live-step--${s.status}`}>
-                <span className="live-dot" />
-                <span className="text-sm">{s.message || `Step ${i + 1}`}</span>
-              </li>
-            ))}
-          </ul>
+      {/* ── Main content ────────────────────────────────────── */}
+      <main className="dash-main">
+        <div className="dash-main-head">
+          <h1 className="dash-title">{TAB_TITLES[activeTab]}</h1>
         </div>
-      )}
 
-      {/* Tabs */}
-      <div className="dash-tabs">
-        {['overview', 'credits', 'history'].map(tab => (
-          <button
-            key={tab}
-            className={`dash-tab ${activeTab === tab ? 'dash-tab--active' : ''}`}
-            onClick={() => setActiveTab(tab)}
-          >
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
-          </button>
-        ))}
-      </div>
+        {/* Live execution feed — shown when agent is running a command */}
+        {liveSteps.length > 0 && (
+          <div className="card live-feed">
+            <p className="section-label" style={{ marginBottom: '0.5rem' }}>
+              ⚡ Live Execution
+            </p>
+            <ul className="live-steps">
+              {liveSteps.map((s, i) => (
+                <li key={i} className={`live-step live-step--${s.status}`}>
+                  <span className="live-dot" />
+                  <span className="text-sm">{s.message || `Step ${i + 1}`}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
       {/* Overview */}
       {activeTab === 'overview' && (
@@ -292,6 +342,7 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+      </main>
     </div>
   )
 }

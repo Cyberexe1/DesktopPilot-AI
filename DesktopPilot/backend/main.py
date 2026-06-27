@@ -59,50 +59,55 @@ ws_manager = WSManager()
 
 # ── Lifespan ──────────────────────────────────────────────────────────────────
 
-def _speak_greeting():
-    """
-    Speak a time-aware greeting when the app starts.
-    Runs in a background thread so it doesn't delay startup.
-    Waits 2 seconds for the SAPI engine to be fully ready first.
-    """
-    import threading, time, json
+def _build_greeting_text() -> str:
+    """Build a time-aware greeting using the user's name from their profile."""
+    import json
     from datetime import datetime
 
+    # Get user's first name from profile (fallback to "Sir")
+    name = "Sir"
+    try:
+        profile_path = os.path.join(os.path.dirname(__file__), "user_profile.json")
+        with open(profile_path, "r") as f:
+            profile = json.load(f)
+        first = (profile.get("first_name") or "").strip()
+        full  = (profile.get("full_name") or "").strip()
+        if first:
+            name = first
+        elif full and full.lower() != "john doe":
+            name = full.split()[0]
+    except Exception:
+        pass
+
+    # Time-aware greeting
+    hour = datetime.now().hour
+    if 5 <= hour < 12:
+        period = "Good morning"
+    elif 12 <= hour < 17:
+        period = "Good afternoon"
+    elif 17 <= hour < 21:
+        period = "Good evening"
+    else:
+        period = "Hello"
+
+    return f"{period}, {name}. DesktopPilot is ready. How can I help you today?"
+
+
+def _speak_greeting(delay: float = 2.0):
+    """
+    Speak a time-aware greeting in a background thread so it never blocks.
+    `delay` lets startup wait for the SAPI engine; on-demand calls use 0.
+    """
+    import threading, time
+
     def _greet():
-        time.sleep(2)  # Let the server fully start before speaking
+        if delay:
+            time.sleep(delay)  # Let the server fully start before speaking
         try:
-            # Get user's first name from profile (fallback to "Sir")
-            name = "Sir"
-            try:
-                profile_path = os.path.join(os.path.dirname(__file__), "user_profile.json")
-                with open(profile_path, "r") as f:
-                    profile = json.load(f)
-                first = (profile.get("first_name") or "").strip()
-                full  = (profile.get("full_name") or "").strip()
-                if first:
-                    name = first
-                elif full and full.lower() != "john doe":
-                    name = full.split()[0]
-            except Exception:
-                pass
-
-            # Time-aware greeting
-            hour = datetime.now().hour
-            if 5 <= hour < 12:
-                period = "Good morning"
-            elif 12 <= hour < 17:
-                period = "Good afternoon"
-            elif 17 <= hour < 21:
-                period = "Good evening"
-            else:
-                period = "Hello"
-
-            greeting = f"{period}, {name}. DesktopPilot is ready. How can I help you today?"
+            greeting = _build_greeting_text()
             log.info(f"Greeting: {greeting}")
-
             from controllers.voice_output_controller import speak_nonblocking
             speak_nonblocking(greeting)
-
         except Exception as e:
             log.warning(f"Greeting failed (non-fatal): {e}")
 
@@ -161,6 +166,24 @@ def err(message: str, code: int = 400):
 @app.get("/health")
 async def health():
     return {"status": "ok", "agent": "DesktopPilot AI v2.0.0"}
+
+
+# ── Greeting ──────────────────────────────────────────────────────────────────
+
+class GreetRequest(BaseModel):
+    speak: bool = True
+
+@app.post("/greet")
+async def greet(req: GreetRequest = GreetRequest()):
+    """
+    Speak a fresh time-aware greeting on demand.
+    Called by the frontend whenever the app/page opens or reloads,
+    since the backend keeps running and the startup greeting only fires once.
+    """
+    text = _build_greeting_text()
+    if req.speak:
+        _speak_greeting(delay=0)  # speak immediately, non-blocking
+    return ok({"greeting": text})
 
 
 # ── WebSocket ─────────────────────────────────────────────────────────────────

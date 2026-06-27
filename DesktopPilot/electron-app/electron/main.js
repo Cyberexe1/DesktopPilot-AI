@@ -86,10 +86,22 @@ function createWindow() {
       nodeIntegration:  false,
       contextIsolation: true,
       preload:          path.join(__dirname, 'preload.js'),
+      zoomFactor:       1.375,   // Scale entire UI by 37.5% from the start
     },
   })
 
   mainWindow.loadURL(RENDERER_URL)
+
+  // Re-assert zoom after every load — Chromium can reset the factor on
+  // navigation/reload, so we set it both in webPreferences and here.
+  mainWindow.webContents.on('did-finish-load', () => {
+    mainWindow.webContents.setZoomFactor(1.375)
+  })
+  // dom-ready fires earlier than did-finish-load — set here too so there's
+  // no brief flash of the un-zoomed layout.
+  mainWindow.webContents.on('dom-ready', () => {
+    mainWindow.webContents.setZoomFactor(1.375)
+  })
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show()

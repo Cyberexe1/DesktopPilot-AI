@@ -76,6 +76,32 @@ export function AgentProvider({ children }) {
       .catch(() => {})
   }, [backendReady])
 
+  // ── Speak greeting once when the app opens / reloads ─────────────────────
+  // The backend keeps running across app reopens, so its startup greeting
+  // only fires once. We trigger a fresh greeting here every time the UI loads,
+  // and publish a signal so the VoicePanel can animate while it speaks.
+  const [greeting, setGreeting] = useState(null)  // { text, ms, id }
+  const greetedRef = useRef(false)
+  useEffect(() => {
+    if (!backendReady || greetedRef.current) return
+    greetedRef.current = true
+    fetch(`${API}/greet`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ speak: true }),
+    })
+      .then(r => r.json())
+      .then(d => {
+        const text = d.data?.greeting || ''
+        if (!text) return
+        // Estimate speech duration (~2.75 words/sec) + buffer
+        const words = text.trim().split(/\s+/).length
+        const ms = Math.min(Math.max((words / 2.75) * 1000 + 800, 2500), 12000)
+        setGreeting({ text, ms, id: Date.now() })
+      })
+      .catch(() => {})
+  }, [backendReady])
+
   const addLog = useCallback((msg, type = 'info') => {
     const time = new Date().toLocaleTimeString()
     setBackendLogs(prev => [{ time, msg, type, id: Date.now() + Math.random() }, ...prev].slice(0, 200))
@@ -161,6 +187,7 @@ export function AgentProvider({ children }) {
     <AgentContext.Provider value={{
       backendReady, backendLogs, addLog,
       credits, setCredits, agentStatus, wsConnected,
+      greeting,
       transcribe, plan, execute,
       getFiles, reindexFiles,
       getProjects, addProject,

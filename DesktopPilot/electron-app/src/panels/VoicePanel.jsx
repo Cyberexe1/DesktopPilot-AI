@@ -30,7 +30,7 @@ function useTypewriter(text, speed = 22) {
 }
 
 export default function VoicePanel() {
-  const { transcribe, plan, execute, addLog, backendReady, credits } = useAgent()
+  const { transcribe, plan, execute, addLog, backendReady, credits, greeting } = useAgent()
   const [step, setStep]         = useState(S.IDLE)
   const [transcript, setTrans]  = useState('')
   const [planData, setPlan]     = useState(null)
@@ -49,6 +49,21 @@ export default function VoicePanel() {
   const typedTranscript = useTypewriter(transcript, 20)
 
   useEffect(() => { stepRef.current = step }, [step])
+
+  // ── Greeting: play the speaking wave animation while the agent greets ────
+  // AgentContext fires the greeting on app open/refresh and publishes
+  // { text, ms, id }. We mirror it as a SPEAKING step so the orb animates.
+  useEffect(() => {
+    if (!greeting?.id) return
+    if (stepRef.current !== S.IDLE) return   // don't interrupt an active command
+    setStep(S.SPEAKING)
+    setLastOutput('')
+    const t = setTimeout(() => {
+      // Only return to idle if we're still showing the greeting animation
+      setStep(prev => (prev === S.SPEAKING ? S.IDLE : prev))
+    }, greeting.ms)
+    return () => clearTimeout(t)
+  }, [greeting?.id]) // eslint-disable-line
 
   // Listen for wake word detected from Electron main process (pvporcupine)
   // This fires when the always-on background listener detects "Hey Cipher"

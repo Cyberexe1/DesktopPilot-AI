@@ -183,7 +183,7 @@ Rules:
    - If ambiguous (like "show me YouTube") → treat as an ACTION (open YouTube).
 6. When asked to write/type something in an app, first open the app, then use type_text.
 7. Use press_key for keyboard shortcuts like saving (ctrl+s) or new line (enter).
-8. When asked to CREATE a file with content, use create_file. It auto-opens in the correct app (.txt→Notepad, .docx→Word, .pptx→PowerPoint, .html/.js/.py→VS Code).
+8. When asked to CREATE a file with content, use create_file. It auto-opens in the correct app (.txt→Notepad, .docx→Word, .pptx→PowerPoint, .html/.js/.py/.c/.cpp→VS Code). NEVER add a separate open_application, open_file, or open_vscode step after create_file — the file is already opened automatically.
 9. When asked to write to an EXISTING file, use write_to_file.
 10. When generating letter/email/document content, write DETAILED and COMPLETE text (at least 5-8 sentences). Include proper greeting, body paragraphs, and closing. Never write just one line.
 11. When generating PowerPoint content, write AT LEAST 5-7 bullet points per topic/section. Each slide should have a heading followed by 5+ detailed points. Make slides feel full (70%+ coverage), not empty with just 2 bullets. Structure content as: Heading1\npoint1\npoint2\npoint3\npoint4\npoint5\nHeading2\npoint1\npoint2... If the user specifies a number of slides (e.g. "10 slide presentation", "make 15 slides"), you MUST set the create_file `slides` param to that exact number.
@@ -404,6 +404,23 @@ def _post_process_plan(plan: dict, user_command: str) -> dict:
     """
     cmd = user_command.lower().strip()
     tasks = plan.get("tasks", [])
+
+    # ── create_file auto-opens: strip any redundant open_*/open_application
+    # steps that follow a create_file (the file is already opened by create_file).
+    OPEN_TOOLS = {"open_application", "open_file", "open_project"}
+    if any(t.get("tool") == "create_file" for t in tasks):
+        seen_create = False
+        cleaned = []
+        for t in tasks:
+            if t.get("tool") == "create_file":
+                seen_create = True
+                cleaned.append(t)
+            elif seen_create and t.get("tool") in OPEN_TOOLS:
+                log.info(f"Post-process: dropped redundant '{t.get('tool')}' after create_file")
+            else:
+                cleaned.append(t)
+        plan["tasks"] = cleaned
+        tasks = plan["tasks"]
 
     # ── Greetings: keep ONLY the speak task (handled before the empty guard) ──
     greetings = ["hello", "hi ", "hey", "good morning", "good evening", "good night",

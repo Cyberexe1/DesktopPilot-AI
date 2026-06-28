@@ -93,6 +93,12 @@ def speak_nonblocking(text: str):
 
     def _speak_thread():
         try:
+            # CoInitialize is required for Windows COM (SAPI) in a background thread.
+            try:
+                import pythoncom
+                pythoncom.CoInitialize()
+            except Exception:
+                pass  # pythoncom not available — proceed anyway
             # Non-blocking uses a fresh pyttsx3 instance to avoid lock contention
             import pyttsx3
             engine = pyttsx3.init()

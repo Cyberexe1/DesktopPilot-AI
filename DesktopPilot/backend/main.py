@@ -67,7 +67,8 @@ def _build_greeting_text() -> str:
     # Get user's first name from profile (fallback to "Sir")
     name = "Sir"
     try:
-        profile_path = os.path.join(os.path.dirname(__file__), "user_profile.json")
+        from app_paths import data_path
+        profile_path = data_path("user_profile.json")
         with open(profile_path, "r") as f:
             profile = json.load(f)
         first = (profile.get("first_name") or "").strip()

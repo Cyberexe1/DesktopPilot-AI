@@ -30,7 +30,7 @@ for pkg in ["pyttsx3", "comtypes", "boto3", "botocore"]:
 # Web server internals that are imported by string name.
 hiddenimports += collect_submodules("uvicorn")
 hiddenimports += ["anyio", "click", "h11", "websockets", "multipart",
-                  "win32timezone", "win32com", "win32com.client"]
+                  "win32timezone", "win32com", "win32com.client", "app_paths"]
 
 a = Analysis(
     ["run_agent.py"],

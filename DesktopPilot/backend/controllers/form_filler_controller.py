@@ -15,7 +15,8 @@ from controllers.keyboard_controller import type_text, press_key
 
 log = logging.getLogger(__name__)
 
-PROFILE_PATH = os.path.join(os.path.dirname(__file__), "..", "user_profile.json")
+from app_paths import data_path
+PROFILE_PATH = data_path("user_profile.json")
 
 DEFAULT_PROFILE = {
     "first_name": "",

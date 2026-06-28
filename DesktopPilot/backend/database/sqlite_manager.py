@@ -7,9 +7,11 @@ import sqlite3
 import logging
 import os
 
+from app_paths import data_path
+
 log = logging.getLogger(__name__)
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "..", "desktoppilot.db")
+DB_PATH = data_path("desktoppilot.db")
 
 
 def get_conn() -> sqlite3.Connection:

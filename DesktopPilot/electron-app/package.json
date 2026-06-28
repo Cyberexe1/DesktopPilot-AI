@@ -2,6 +2,7 @@
   "name": "desktoppilot-agent",
   "version": "1.0.1",
   "description": "DesktopPilot AI — Local Desktop Agent",
+  "author": "DesktopPilot AI",
   "main": "electron/main.js",
   "scripts": {
     "dev": "concurrently \"vite\" \"wait-on http://localhost:5174 && electron .\"",
@@ -50,8 +51,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "DesktopPilot AI",
-      "include": "build/installer.nsh"
+      "shortcutName": "DesktopPilot AI"
     }
   }
 }

@@ -65,13 +65,13 @@ export default function VoicePanel() {
     return () => clearTimeout(t)
   }, [greeting?.id]) // eslint-disable-line
 
-  // Listen for wake word detected from Electron main process (pvporcupine)
-  // This fires when the always-on background listener detects "Hey Cipher"
+  // Listen for wake word detected from the Electron main process (optional
+  // local listener). The primary wake word is the in-app browser listener below.
   useEffect(() => {
     if (!window.dp) return
     const handleWake = () => {
       if (stepRef.current === S.IDLE && backendReady) {
-        addLog('Wake word detected — pvporcupine activated', 'success')
+        addLog('Wake word detected — activating', 'success')
         startListening()
       }
     }

@@ -25,7 +25,7 @@ const RENDERER_URL = IS_DEV
 let mainWindow    = null
 let tray          = null
 let fastapiProc   = null
-let wakeProc      = null   // pvporcupine wake word listener
+let wakeProc      = null   // optional local wake word listener (openwakeword)
 let isQuitting    = false
 let backendReady  = false
 
@@ -392,7 +392,7 @@ function stopFastAPI() {
   fastapiProc = null
 }
 
-// ── Wake Word Listener (pvporcupine — always-on background process) ────────────
+// ── Wake Word Listener (openwakeword — optional local background process) ──────
 function startWakeListener() {
   // The wake-word engine (openwakeword) is not bundled in the packaged app,
   // and there is no system Python to run it. Skip it in production — users
@@ -418,7 +418,7 @@ function startWakeListener() {
     return
   }
 
-  console.log('[Wake] Starting pvporcupine wake word listener...')
+  console.log('[Wake] Starting openwakeword wake word listener...')
 
   wakeProc = spawn(python, [script], {
     cwd:   backendDir,

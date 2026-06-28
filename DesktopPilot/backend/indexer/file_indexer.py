@@ -24,6 +24,7 @@ SCAN_DIRS = [
     rf"C:\Users\{_USER}\Downloads",
     rf"C:\Users\{_USER}\Pictures",
     "D:/Projects",
+    "D:/",          # scan D: drive root so files created there are indexed
     "C:/Projects",
     rf"C:\Users\{_USER}\Projects",
 ]

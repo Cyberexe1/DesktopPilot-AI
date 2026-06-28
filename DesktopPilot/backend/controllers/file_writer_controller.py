@@ -127,6 +127,14 @@ def create_file(filename: str, content: str = "", directory: str = "", slides: i
                 f.write(content)
 
         log.info(f"Created: {filepath}")
+        # Immediately add the new file to the index so it shows up in searches
+        # without waiting for the next full rescan or file-watcher event.
+        try:
+            from indexer.file_indexer import insert_file as _idx_insert
+            from datetime import datetime
+            _idx_insert(safe_name, filepath, datetime.now().isoformat())
+        except Exception:
+            pass
     except Exception as e:
         return f"Failed to create file: {e}"
 
@@ -289,12 +297,19 @@ def _get_project_commands(name: str, framework: str, directory: str) -> str:
 
 def _run_in_visible_terminal(commands: str, cwd: str = "") -> None:
     """Open a CMD window and run commands visibly so the user can watch."""
+    import tempfile, uuid
     try:
-        full_cmd = f'cmd /k "{commands}"'
+        # Write commands to a temp .bat file to avoid quoting issues with
+        # long && chains passed through start/shell.
+        bat = os.path.join(tempfile.gettempdir(), f"dp_{uuid.uuid4().hex[:8]}.bat")
+        with open(bat, "w") as f:
+            f.write("@echo off\n")
+            f.write(commands + "\n")
+            f.write("del /f /q \"%~f0\"\n")   # self-delete after running
         subprocess.Popen(
-            f'start cmd /k "{commands}"',
+            f'start cmd /k "{bat}"',
             shell=True,
-            cwd=cwd if os.path.exists(cwd) else None,
+            cwd=cwd if cwd and os.path.exists(cwd) else None,
         )
         log.info(f"Opened terminal with: {commands[:100]}...")
     except Exception as e:

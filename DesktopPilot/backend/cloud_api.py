@@ -156,22 +156,10 @@ async def transcribe(audio: UploadFile = File(...)):
     try:
         audio_bytes = await audio.read()
         log.info(f"Received audio: {len(audio_bytes)} bytes")
-
-        # Fast path: Amazon Transcribe Streaming (no S3, ~1s).
-        try:
-            from voice.streaming_transcriber import transcribe_stream
-            text = await transcribe_stream(audio_bytes, region=os.getenv("AWS_DEFAULT_REGION", "us-east-1"))
-            if text and len(text.strip()) >= 1:
-                log.info(f"Transcript (streaming): {text}")
-                return ok({"text": text})
-            log.warning("Streaming returned empty — falling back to batch Transcribe")
-        except Exception as e:
-            log.warning(f"Streaming transcribe failed ({type(e).__name__}: {e}) — falling back to batch")
-
-        # Fallback: batch Amazon Transcribe (uploads to S3, polls).
-        from voice.transcriber import transcribe_audio_bytes
-        text = await transcribe_audio_bytes(audio_bytes)
-        log.info(f"Transcript (batch): {text}")
+        # Amazon Transcribe Streaming — no S3, ~1s latency.
+        from voice.streaming_transcriber import transcribe_stream
+        text = await transcribe_stream(audio_bytes, region=os.getenv("AWS_DEFAULT_REGION", "us-east-1"))
+        log.info(f"Transcript: {text}")
         return ok({"text": text})
     except Exception as e:
         log.error(f"Transcription error: {e}")

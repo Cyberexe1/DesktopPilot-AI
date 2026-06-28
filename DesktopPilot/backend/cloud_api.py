@@ -128,6 +128,21 @@ async def plan(req: PlanRequest):
         from ai.planner import generate_plan
         plan_data = await generate_plan(req.text, user_id=req.user_id)
         log.info(f"Plan: {len(plan_data.get('tasks', []))} tasks")
+
+        # Persist the command to DynamoDB so the Memory/history view survives
+        # across machines (the local desktop agent has no AWS credentials).
+        try:
+            from ai.memory import save_command_cloud
+            save_command_cloud(
+                user_id=req.user_id,
+                command=req.text,
+                intent=plan_data.get("intent", ""),
+                status="planned",
+                credits_used=1,
+            )
+        except Exception as e:
+            log.warning(f"Command persist skipped: {e}")
+
         return ok({"plan": plan_data, "credits_remaining": remaining})
     except Exception as e:
         log.error(f"Planning error: {e}")

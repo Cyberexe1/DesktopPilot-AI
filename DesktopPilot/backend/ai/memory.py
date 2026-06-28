@@ -38,7 +38,7 @@ def get_context(user_id: str = "default") -> dict:
     Tries DynamoDB first, falls back to local SQLite.
     """
     last_project    = get_last_project()
-    recent_commands = [c["command"] for c in get_recent_commands(limit=5)]
+    recent_commands = [c["command"] for c in get_commands(user_id, limit=5)]
     credits         = 100  # default
 
     try:

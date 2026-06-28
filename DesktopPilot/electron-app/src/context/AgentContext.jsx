@@ -176,13 +176,15 @@ export function AgentProvider({ children }) {
   }, [])
 
   const getMemory = useCallback(async () => {
-    const res  = await fetch(`${API}/memory`)
+    // Read from the cloud so memory reflects DynamoDB (persists across machines).
+    const res  = await fetch(`${CLOUD_API}/memory`)
     const data = await res.json()
     return data.data ?? {}
   }, [])
 
   const getHistory = useCallback(async () => {
-    const res  = await fetch(`${API}/memory/commands`)
+    // Command history is persisted to DynamoDB via the cloud backend.
+    const res  = await fetch(`${CLOUD_API}/memory/commands`)
     const data = await res.json()
     return data.data?.commands ?? []
   }, [])

@@ -161,6 +161,15 @@ async def get_memory(user_id: str = "default"):
         err(str(e))
 
 
+@app.get("/memory/commands")
+async def get_memory_commands(user_id: str = "default", limit: int = 25):
+    from ai.memory import get_commands
+    try:
+        return ok({"commands": get_commands(user_id, limit)})
+    except Exception as e:
+        err(str(e))
+
+
 # ── Credits ───────────────────────────────────────────────────────────────────
 
 @app.get("/credits")

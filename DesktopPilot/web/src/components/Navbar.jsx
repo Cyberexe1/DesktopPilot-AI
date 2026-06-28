@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Zap, LogOut, User } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { API_URL } from '../lib/config'
 import './Navbar.css'
 
 export default function Navbar() {
@@ -14,11 +15,11 @@ export default function Navbar() {
   useEffect(() => {
     const check = async () => {
       try {
-        const res = await fetch('http://localhost:8888/health', { signal: AbortSignal.timeout(2000) })
+        const res = await fetch(`${API_URL}/health`, { signal: AbortSignal.timeout(2000) })
         const ok  = res.ok
         setAgentConnected(ok)
         if (ok) {
-          const cr = await fetch('http://localhost:8888/credits')
+          const cr = await fetch(`${API_URL}/credits`)
           const cd = await cr.json()
           if (cd.data?.credits_remaining != null) setCredits(cd.data.credits_remaining)
         }

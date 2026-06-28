@@ -1,6 +1,7 @@
 import axios from 'axios'
+import { API_URL } from './config'
 
-const BASE = import.meta.env.VITE_API_URL || 'http://localhost:8888'
+const BASE = API_URL
 
 const client = axios.create({
   baseURL: BASE,
@@ -39,7 +40,11 @@ export async function generatePlan(text) {
 
 // ── Execute ───────────────────────────────────────────────────────────────────
 /**
- * Send plan to executor → streams step results via polling
+ * Send plan to executor → streams step results via polling.
+ *
+ * NOTE: /execute is served ONLY by the LOCAL Electron agent (desktop control),
+ * not by the cloud API at VITE_API_URL. The web dashboard does not execute plans;
+ * this helper exists for the local agent context.
  * @param {object} plan
  * @param {function} onStep  - called with (index, {success, message}) per step
  * @returns {Promise<Array>}

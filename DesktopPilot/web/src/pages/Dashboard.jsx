@@ -3,9 +3,10 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Zap, CreditCard, Clock, Download, CheckCircle, Star, Wifi, WifiOff, RefreshCw,
          LayoutDashboard, History as HistoryIcon, Home, FileText, LogOut } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { API_URL, WS_URL } from '../lib/config'
 import './Dashboard.css'
 
-const API = 'http://localhost:8888'
+const API = API_URL
 
 const PLANS = [
   {
@@ -74,7 +75,7 @@ export default function Dashboard() {
     let ws
     const connect = () => {
       try {
-        ws = new WebSocket('ws://localhost:8888/ws')
+        ws = new WebSocket(WS_URL)
         wsRef.current = ws
         ws.onmessage = (e) => {
           try {

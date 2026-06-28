@@ -10,6 +10,8 @@ from datetime import datetime, timezone
 import boto3
 from botocore.exceptions import ClientError, NoCredentialsError, EndpointResolutionError
 
+from boto3.dynamodb.conditions import Key
+
 from database.sqlite_manager import get_last_project, get_recent_commands
 
 log = logging.getLogger(__name__)
@@ -64,6 +66,41 @@ def get_context(user_id: str = "default") -> dict:
             "credits_remaining": credits,
             "source":           "local",
         }
+
+
+# ── Command history ───────────────────────────────────────────────────────────
+
+def get_commands(user_id: str = "default", limit: int = 25) -> list[dict]:
+    """
+    Return recent command history for the user.
+    Tries DynamoDB (DesktopPilotCommands) first, falls back to local SQLite.
+    """
+    try:
+        table    = _get_dynamo().Table(CMD_TABLE)
+        response = table.query(
+            KeyConditionExpression=Key("user_id").eq(user_id),
+            ScanIndexForward=False,  # newest first
+            Limit=limit,
+        )
+        items = response.get("Items", [])
+        commands = [{
+            "command":      i.get("command", ""),
+            "intent":       i.get("intent", ""),
+            "status":       i.get("status", ""),
+            "timestamp":    i.get("timestamp", ""),
+            "duration_ms":  int(i.get("duration_ms", 0)),
+            "credits_used": int(i.get("credits_used", 0)),
+        } for i in items]
+        return commands
+
+    except (ClientError, NoCredentialsError, EndpointResolutionError, Exception) as e:
+        log.warning(f"DynamoDB unavailable for commands, using local: {type(e).__name__}")
+        return [{
+            "command":   c.get("command", ""),
+            "intent":    "",
+            "status":    "",
+            "timestamp": c.get("timestamp", ""),
+        } for c in get_recent_commands(limit=limit)]
 
 
 # ── Save command ──────────────────────────────────────────────────────────────

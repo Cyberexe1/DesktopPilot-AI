@@ -14,6 +14,7 @@ RUN pip install --no-cache-dir -r requirements-cloud.txt
 
 # Copy only the cloud-safe code (see .dockerignore for exclusions)
 COPY cloud_api.py .
+COPY app_paths.py .
 COPY ai/        ./ai/
 COPY voice/     ./voice/
 COPY controllers/auth_controller.py ./controllers/auth_controller.py

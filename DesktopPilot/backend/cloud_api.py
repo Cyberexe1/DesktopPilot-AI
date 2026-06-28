@@ -220,7 +220,9 @@ async def auth_signup(req: SignupRequest):
     result = signup(req.name, req.email, req.password)
     if result["success"]:
         return ok(result)
-    err(result["error"], 400)
+    # A backend/DynamoDB failure is not a client error — surface it as 503.
+    code = 503 if "Database error" in result.get("error", "") else 400
+    err(result["error"], code)
 
 class LoginRequest(BaseModel):
     email: str
@@ -232,4 +234,6 @@ async def auth_login(req: LoginRequest):
     result = login(req.email, req.password)
     if result["success"]:
         return ok(result)
-    err(result["error"], 401)
+    # Distinguish backend failures (503) from bad credentials (401).
+    code = 503 if "Database error" in result.get("error", "") else 401
+    err(result["error"], code)

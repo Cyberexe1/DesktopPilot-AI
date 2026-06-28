@@ -1,7 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react'
+import { LOCAL_API, CLOUD_API } from '../config'
 
 const AgentContext = createContext(null)
-const API = 'http://localhost:8888'
+// Local bundled agent for desktop control; cloud backend for AWS-backed AI.
+const API = LOCAL_API
 
 export function AgentProvider({ children }) {
   const [backendReady, setBackendReady] = useState(false)
@@ -111,14 +113,16 @@ export function AgentProvider({ children }) {
   const transcribe = useCallback(async (audioBlob) => {
     const form = new FormData()
     form.append('audio', audioBlob, 'recording.wav')
-    const res  = await fetch(`${API}/transcribe`, { method: 'POST', body: form })
+    // AWS Transcribe lives in the cloud backend (holds AWS credentials).
+    const res  = await fetch(`${CLOUD_API}/transcribe`, { method: 'POST', body: form })
     const data = await res.json()
     if (data.error) throw new Error(data.error)
     return data.data.text
   }, [])
 
   const plan = useCallback(async (text) => {
-    const res  = await fetch(`${API}/plan`, {
+    // AWS Bedrock planning lives in the cloud backend (holds AWS credentials).
+    const res  = await fetch(`${CLOUD_API}/plan`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text }),
     })

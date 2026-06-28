@@ -35,6 +35,12 @@
       "electron/**/*",
       "assets/**/*"
     ],
+    "extraResources": [
+      {
+        "from": "../backend/dist/desktoppilot-agent",
+        "to": "agent"
+      }
+    ],
     "win": {
       "target": "nsis",
       "icon": "assets/icon.ico"

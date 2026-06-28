@@ -281,10 +281,29 @@ function resolvePython() {
 }
 
 function startFastAPI() {
-  const backendDir = IS_DEV
-    ? path.join(__dirname, '../../backend')
-    : path.join(process.resourcesPath, 'backend')
+  // ── Production: spawn the bundled standalone agent (no Python required) ──
+  if (!IS_DEV) {
+    const agentExe = path.join(process.resourcesPath, 'agent', 'desktoppilot-agent.exe')
+    if (!fs.existsSync(agentExe)) {
+      console.error(`[FastAPI] Bundled agent not found at ${agentExe}`)
+      mainWindow?.webContents.send('fastapi:status', { running: false, error: 'agent-missing' })
+      updateTrayMenu(false)
+      showNotification('DesktopPilot AI', 'Agent binary missing from installation. Please reinstall.')
+      return
+    }
+    console.log(`[FastAPI] Starting bundled agent: ${agentExe}`)
+    fastapiProc = spawn(agentExe, [], {
+      cwd:   path.dirname(agentExe),
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env:   { ...process.env, DP_AGENT_PORT: String(FASTAPI_PORT) },
+    })
+    wireFastAPIHandlers()
+    pollFastAPI()
+    return
+  }
 
+  // ── Dev: run the backend from source with system Python ──
+  const backendDir = path.join(__dirname, '../../backend')
   const python = resolvePython()
   if (!python) {
     console.error('[FastAPI] Python not found on PATH')
@@ -308,6 +327,14 @@ function startFastAPI() {
       env:   { ...process.env },
     }
   )
+
+  wireFastAPIHandlers()
+  pollFastAPI()
+}
+
+// Shared stdout/stderr/exit wiring for whichever backend process we spawned.
+function wireFastAPIHandlers() {
+  if (!fastapiProc) return
 
   // Without this, a failed spawn (e.g. ENOENT) becomes an uncaught exception
   // and crashes the whole app with a JavaScript error dialog.
@@ -340,8 +367,6 @@ function startFastAPI() {
     mainWindow?.webContents.send('fastapi:status', { running: false, code })
     updateTrayMenu(false)
   })
-
-  pollFastAPI()
 }
 
 function pollFastAPI(attempt = 0) {
@@ -369,6 +394,14 @@ function stopFastAPI() {
 
 // ── Wake Word Listener (pvporcupine — always-on background process) ────────────
 function startWakeListener() {
+  // The wake-word engine (openwakeword) is not bundled in the packaged app,
+  // and there is no system Python to run it. Skip it in production — users
+  // activate voice with the mic button instead.
+  if (!IS_DEV) {
+    console.log('[Wake] Skipped in packaged build (use mic button)')
+    return
+  }
+
   const backendDir = IS_DEV
     ? path.join(__dirname, '../../backend')
     : path.join(process.resourcesPath, 'backend')

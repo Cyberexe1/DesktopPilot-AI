@@ -45,10 +45,14 @@ jobs:
           docker push "$REGISTRY/$ECR_REPOSITORY:latest"
 
       - name: Trigger App Runner deployment
+        # App Runner auto-deploys on new image push, so this explicit call may
+        # hit a "deployment already in progress" conflict. Don't fail the job.
+        continue-on-error: true
         env:
           APPRUNNER_SERVICE_ARN: ${{ secrets.APPRUNNER_SERVICE_ARN }}
         if: ${{ env.APPRUNNER_SERVICE_ARN != '' }}
         run: |
           aws apprunner start-deployment \
             --service-arn "$APPRUNNER_SERVICE_ARN" \
-            --region "$AWS_REGION"
+            --region "$AWS_REGION" \
+            || echo "start-deployment skipped (auto-deploy already running)"

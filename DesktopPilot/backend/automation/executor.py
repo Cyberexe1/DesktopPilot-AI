@@ -379,7 +379,12 @@ async def _h_create_file(task, user_id, loop):
     filename  = task.get("filename", "")
     content   = task.get("content", "")
     directory = task.get("directory", "")
-    return await loop.run_in_executor(None, create_file, filename, content, directory)
+    # Optional slide count for .pptx (planner extracts "N slides" from the command)
+    try:
+        slides = int(task.get("slides", 0) or 0)
+    except (TypeError, ValueError):
+        slides = 0
+    return await loop.run_in_executor(None, create_file, filename, content, directory, slides)
 
 
 async def _h_write_to_file(task, user_id, loop):

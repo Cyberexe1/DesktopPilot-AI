@@ -46,8 +46,12 @@ def generate_content(topic: str, content_type: str = "presentation",
     log.info(f"Content generation: {content_type} about '{topic}' ({num_slides} sections)")
 
     try:
+        # Scale the token budget with the number of slides so large decks get
+        # enough content (each slide ≈ heading + 5-6 bullets ≈ 250-300 tokens).
+        max_tokens = min(8000, max(2048, num_slides * 320))
+
         if _is_llama():
-            body = {"prompt": prompt, "max_gen_len": 2048, "temperature": 0.3}
+            body = {"prompt": prompt, "max_gen_len": max_tokens, "temperature": 0.3}
         elif _is_nova():
             body = {
                 "schemaVersion": "messages-v1",
@@ -55,14 +59,14 @@ def generate_content(topic: str, content_type: str = "presentation",
                     {"role": "user", "content": [{"text": prompt}]}
                 ],
                 "inferenceConfig": {
-                    "maxTokens": 2048,
+                    "maxTokens": max_tokens,
                     "temperature": 0.3,
                 }
             }
         else:
             body = {
                 "anthropic_version": "bedrock-2023-05-31",
-                "max_tokens": 2048,
+                "max_tokens": max_tokens,
                 "messages": [{"role": "user", "content": prompt}],
             }
 

@@ -66,12 +66,14 @@ EXT_TO_APP = {
 }
 
 
-def create_file(filename: str, content: str = "", directory: str = "") -> str:
+def create_file(filename: str, content: str = "", directory: str = "", slides: int = 0) -> str:
     """
     Create a new file with content and open it in the appropriate application.
     - .txt → opens in Notepad
     - .docx/.pptx/.xlsx → opens in Word/PowerPoint/Excel
     - .html/.css/.js/.py/.jsx etc → opens in VS Code
+
+    `slides` (optional): for .pptx, the number of content slides the user asked for.
     """
     # Default to Desktop
     if not directory or directory.lower() == "desktop":
@@ -116,7 +118,7 @@ def create_file(filename: str, content: str = "", directory: str = "") -> str:
             _create_docx(filepath, content)
         elif ext == ".pptx":
             # For presentations, enrich content if too sparse
-            enriched = _enrich_pptx_content(content, safe_name)
+            enriched = _enrich_pptx_content(content, safe_name, requested_slides=slides)
             _create_pptx(filepath, enriched)
         elif ext == ".xlsx":
             _create_xlsx(filepath, content)
@@ -488,16 +490,22 @@ def _create_docx(filepath: str, content: str):
     doc.save(filepath)
 
 
-def _enrich_pptx_content(content: str, filename: str) -> str:
+def _enrich_pptx_content(content: str, filename: str, requested_slides: int = 0) -> str:
     """
     If AI-generated content is too sparse, call Bedrock AGAIN
     to generate detailed presentation content (plain text, not JSON).
+
+    `requested_slides`: the number of content slides the user asked for.
+    When set, it overrides the heuristic and content is regenerated to match.
     """
+    import re
+
     lines = [l.strip() for l in content.split('\n') if l.strip()]
 
-    # If content is already rich (>20 lines with bullets), use as-is
+    # If content is already rich AND the user didn't ask for a specific count,
+    # use it as-is. If a count was requested, always (re)generate to match it.
     bullet_count = sum(1 for l in lines if l.startswith('•'))
-    if bullet_count >= 15:
+    if bullet_count >= 15 and not requested_slides:
         return content
 
     # Extract topic from filename or content
@@ -509,9 +517,20 @@ def _enrich_pptx_content(content: str, filename: str) -> str:
     full_lower = content.lower()
     has_flowchart = any(kw in full_lower for kw in ['flowchart', 'flow chart', 'diagram', 'process flow'])
 
-    # Determine number of slides from content or default to 4
-    num_slides = max(3, len([l for l in lines if len(l) < 50 and not l.startswith('•')]))
-    num_slides = min(num_slides, 8)  # Max 8 content sections (+ title + flowchart = 10 max)
+    # ── Determine number of slides ──
+    # 1) explicit param from the planner (most reliable)
+    # 2) a number parsed from the content text ("10 slides")
+    # 3) heuristic from the number of heading-like lines
+    if requested_slides and requested_slides > 0:
+        num_slides = requested_slides
+    else:
+        m = re.search(r'(\d+)\s*slides?', full_lower)
+        if m:
+            num_slides = int(m.group(1))
+        else:
+            num_slides = max(4, len([l for l in lines if len(l) < 50 and not l.startswith('•')]))
+    # Sane bounds: at least 1 content slide, cap to keep generation reasonable.
+    num_slides = max(1, min(num_slides, 30))
 
     # Extra instructions from original content
     extra = ""
@@ -620,34 +639,50 @@ def _create_pptx(filepath: str, content: str):
         rule.line.fill.background()
 
     # ── Parse slides data ──
-    title_text    = content_lines[0] if content_lines else "Presentation"
-    subtitle_text = content_lines[1] if len(content_lines) > 1 else "Created by DesktopPilot AI"
+    # ── Parse slides data (markdown-aware) ──
+    def _strip_md(s: str) -> str:
+        s = s.strip().lstrip('#').strip()
+        return s.replace('**', '').replace('__', '').strip()
+
+    def _is_separator(s: str) -> bool:
+        s = s.strip()
+        return len(s) >= 3 and set(s) <= set('-=*_~')
+
+    title_text    = _strip_md(content_lines[0]) if content_lines else "Presentation"
+    subtitle_text = _strip_md(content_lines[1]) if len(content_lines) > 1 else "Created by DesktopPilot AI"
     remaining     = content_lines[2:] if len(content_lines) > 2 else []
 
     slides_data = []
     current     = {"title": "", "bullets": []}
-    for line in remaining:
-        is_head = (
-            not line.startswith(('•', '-', '*', '·')) and
-            len(line) < 65 and
-            (line[0].isupper() if line else False)
-        )
-        if is_head and current["title"]:
-            slides_data.append(current)
-            current = {"title": line, "bullets": []}
-        elif is_head:
-            current["title"] = line
-        else:
-            b = line.lstrip('•-*· ').strip()
-            if b:
-                current["bullets"].append(b)
+    for raw in remaining:
+        line = raw.strip()
+        if not line or _is_separator(line):
+            continue
+
+        md_heading = line.startswith('#')
+        bullet     = line.startswith(('•', '·')) or (line.startswith(('-', '*', '+')) and not md_heading)
+        text       = _strip_md(line) if md_heading else line.lstrip('•-*·+ ').strip()
+
+        if bullet:
+            if text:
+                current["bullets"].append(text)
+            continue
+
+        # Heading: a markdown heading, or a short non-bullet line.
+        is_head = md_heading or (len(line) < 80 and bool(text) and text[:1].isalnum())
+        if is_head:
+            if current["title"] or current["bullets"]:
+                slides_data.append(current)
+            current = {"title": text, "bullets": []}
+        elif text:
+            current["bullets"].append(text)
 
     if current["title"] or current["bullets"]:
         slides_data.append(current)
 
     if not slides_data and remaining:
         for i in range(0, len(remaining), 5):
-            chunk = remaining[i:i+5]
+            chunk = [_strip_md(c) for c in remaining[i:i+5]]
             slides_data.append({
                 "title":   chunk[0],
                 "bullets": chunk[1:] or ["Details for this section"]
@@ -683,7 +718,7 @@ def _create_pptx(filepath: str, content: str):
     # ════════════════════════════════════════════════════
     # CONTENT SLIDES
     # ════════════════════════════════════════════════════
-    for idx, sd in enumerate(slides_data[:8]):
+    for idx, sd in enumerate(slides_data[:30]):
         slide = prs.slides.add_slide(prs.slide_layouts[6])
         _dark_bg(slide)
 

@@ -12,6 +12,26 @@ const S = {
 const SENSITIVE = new Set(['run_terminal','compose_email','delete_file','open_setting'])
 const WAKE_WORDS = ['hey cipher', 'hi cipher', 'hello cipher', 'okay cipher', 'cipher']
 
+// ── Voice activity detection (auto-send on silence) ──
+const VAD_SILENCE_MS   = 2000   // stop after this much trailing silence
+const VAD_THRESHOLD    = 0.015  // RMS volume (0..1) above which counts as speech
+const VAD_MAX_MS       = 25000  // hard cap on recording length
+const VAD_NO_SPEECH_MS = 8000   // stop if no speech ever detected
+
+// ── Instant acknowledgment (spoken client-side, zero latency) ──
+const ACK_PHRASES = ['On it.', 'Got it.', 'Sure.', 'Right away.', 'Working on it.']
+let _ackIdx = 0
+function speakAck() {
+  try {
+    const synth = window.speechSynthesis
+    if (!synth) return
+    const u = new SpeechSynthesisUtterance(ACK_PHRASES[_ackIdx++ % ACK_PHRASES.length])
+    u.rate = 1.05
+    synth.cancel()
+    synth.speak(u)
+  } catch {}
+}
+
 // Typewriter hook — reveals text char by char
 function useTypewriter(text, speed = 22) {
   const [displayed, setDisplayed] = useState('')
@@ -44,6 +64,8 @@ export default function VoicePanel() {
   const chunksRef     = useRef([])
   const wakeRef       = useRef(null)
   const wakeChunksRef = useRef([])
+  const audioCtxRef   = useRef(null)
+  const vadRafRef     = useRef(null)
   const stepRef       = useRef(S.IDLE)
 
   const typedTranscript = useTypewriter(transcript, 20)
@@ -158,26 +180,87 @@ export default function VoicePanel() {
       recorder.ondataavailable = e => chunksRef.current.push(e.data)
       recorder.onstop = () => handleStop(stream)
       recorder.start()
+      _startVAD(stream)   // auto-stop on 2s of silence
     } catch (e) {
       setError('Microphone access denied.'); setStep(S.ERROR)
       addLog('Mic error: ' + e.message, 'error')
     }
   }
 
+  // Monitor mic volume and auto-stop after VAD_SILENCE_MS of silence
+  // (once speech has started), or at the max/no-speech caps.
+  const _startVAD = (stream) => {
+    let ctx
+    try {
+      ctx = new (window.AudioContext || window.webkitAudioContext)()
+    } catch {
+      return // Web Audio unavailable — fall back to manual stop only
+    }
+    audioCtxRef.current = ctx
+    const source   = ctx.createMediaStreamSource(stream)
+    const analyser = ctx.createAnalyser()
+    analyser.fftSize = 2048
+    source.connect(analyser)
+    const buf = new Uint8Array(analyser.fftSize)
+
+    const startedAt = performance.now()
+    let speechStartedAt = 0
+    let lastLoudAt = startedAt
+
+    const tick = () => {
+      if (!mediaRef.current || mediaRef.current.state !== 'recording') return
+      analyser.getByteTimeDomainData(buf)
+      let sum = 0
+      for (let i = 0; i < buf.length; i++) { const v = (buf[i] - 128) / 128; sum += v * v }
+      const rms = Math.sqrt(sum / buf.length)
+      const now = performance.now()
+
+      if (rms >= VAD_THRESHOLD) {
+        lastLoudAt = now
+        if (!speechStartedAt) speechStartedAt = now
+      }
+
+      const silenceFor = now - lastLoudAt
+      const elapsed    = now - startedAt
+
+      const shouldStop =
+        (speechStartedAt && silenceFor >= VAD_SILENCE_MS) ||  // spoke then went quiet
+        (!speechStartedAt && elapsed >= VAD_NO_SPEECH_MS) ||  // never spoke
+        (elapsed >= VAD_MAX_MS)                               // hard cap
+
+      if (shouldStop) { stopListening(); return }
+      vadRafRef.current = requestAnimationFrame(tick)
+    }
+    vadRafRef.current = requestAnimationFrame(tick)
+  }
+
+  const _stopVAD = () => {
+    if (vadRafRef.current) { cancelAnimationFrame(vadRafRef.current); vadRafRef.current = null }
+    if (audioCtxRef.current) { try { audioCtxRef.current.close() } catch {} audioCtxRef.current = null }
+  }
+
   const stopListening = () => {
+    _stopVAD()
     if (mediaRef.current?.state === 'recording') {
       mediaRef.current.stop(); setStep(S.PROCESSING)
     }
   }
 
   const handleStop = async (stream) => {
+    _stopVAD()
     stream.getTracks().forEach(t => t.stop())
     const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
     try {
       setStep(S.PROCESSING)
       addLog('Transcribing via Amazon Transcribe...', 'info')
       const text = await transcribe(blob)
+      if (!text || !text.trim()) {
+        addLog('No speech detected', 'warning')
+        setStep(S.IDLE)
+        return
+      }
       setTrans(text)
+      speakAck()   // instant spoken "On it" while the plan is generated
       addLog(`Transcript: "${text}"`, 'success')
       setStep(S.PLANNING)
       addLog('Generating plan via Amazon Bedrock...', 'info')

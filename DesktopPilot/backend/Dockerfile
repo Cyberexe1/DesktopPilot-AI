@@ -18,6 +18,7 @@ COPY app_paths.py .
 COPY ai/        ./ai/
 COPY voice/     ./voice/
 COPY controllers/auth_controller.py ./controllers/auth_controller.py
+COPY controllers/knowledge_controller.py ./controllers/knowledge_controller.py
 COPY controllers/__init__.py        ./controllers/__init__.py
 COPY database/  ./database/
 

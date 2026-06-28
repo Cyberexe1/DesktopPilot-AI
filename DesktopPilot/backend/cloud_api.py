@@ -129,6 +129,25 @@ async def plan(req: PlanRequest):
         plan_data = await generate_plan(req.text, user_id=req.user_id)
         log.info(f"Plan: {len(plan_data.get('tasks', []))} tasks")
 
+        # Resolve knowledge answers HERE on the cloud (the local desktop agent
+        # has no AWS credentials), then hand the app a plain `speak` task so it
+        # just voices the answer — no Bedrock call needed on the client.
+        try:
+            tasks = plan_data.get("tasks", [])
+            if any(t.get("tool") == "answer_question" for t in tasks):
+                from controllers.knowledge_controller import answer_question
+                resolved = []
+                for t in tasks:
+                    if t.get("tool") == "answer_question":
+                        q = t.get("question") or t.get("text") or t.get("query") or req.text
+                        ans = answer_question(q)
+                        resolved.append({"tool": "speak", "text": ans})
+                    else:
+                        resolved.append(t)
+                plan_data["tasks"] = resolved
+        except Exception as e:
+            log.warning(f"Answer resolution skipped: {e}")
+
         # Persist the command to DynamoDB so the Memory/history view survives
         # across machines (the local desktop agent has no AWS credentials).
         try:

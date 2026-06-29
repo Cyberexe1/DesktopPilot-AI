@@ -845,6 +845,17 @@ def _create_pptx(filepath: str, content: str):
         _hrule(s, Inches(5.4), ACCENT1 if section_num % 2 == 0 else ACCENT2)
 
     # ── Insert KPI slide after slide 0 (using first 4 section titles) ──
+    # The KPI + dividers are part of the requested slide count, so we
+    # reduce content slides to leave room for them.
+    # Budget: 1 title (always) + requested content + 1 thank-you (always)
+    # KPI takes 1 slot; dividers take 1 slot per group of 3 content slides.
+    total_requested = max(1, len(slides_data))
+    # Estimate how many dividers will be added (1 per 3 content slides, skip first group)
+    est_dividers = max(0, (total_requested - 1) // 3)
+    # How many content slots remain after KPI + dividers
+    content_budget = max(1, total_requested - 1 - est_dividers)  # -1 for KPI
+    slides_data = slides_data[:content_budget]
+
     if len(slides_data) >= 2:
         kpi_titles = [sd["title"] for sd in slides_data if sd["title"]][:4]
         _add_kpi_slide(kpi_titles)

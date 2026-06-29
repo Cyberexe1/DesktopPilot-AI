@@ -51,7 +51,8 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "DesktopPilot AI"
+      "shortcutName": "DesktopPilot AI",
+      "include": "build/installer.nsh"
     }
   }
 }

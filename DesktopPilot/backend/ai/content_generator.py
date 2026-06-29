@@ -108,24 +108,26 @@ def _build_content_prompt(topic: str, content_type: str, num_slides: int, extra:
 
 Requirements:
 - Exactly {num_slides} sections (slides)
-- Each section has a HEADING on its own line
-- Each section has 5-6 detailed bullet points starting with •
+- Each section has a HEADING on its own line (no markdown, no #)
+- Each section has 6-8 detailed bullet points starting with •
 - First section should be an introduction/overview
 - Last section should be conclusion or future scope
 - Make bullet points specific, informative, and data-driven
-- Each bullet should be a complete sentence (15-25 words)
+- Each bullet should be a complete, informative sentence (15-30 words)
+- Cover statistics, examples, real-world applications, and trends
 {f'- Additional requirements: {extra}' if extra else ''}
 
-Format (follow EXACTLY):
+Format (follow EXACTLY, no markdown headers, no ---, plain text):
 {topic}
 Subtitle describing the presentation
 
 Introduction to {topic}
-• First detailed point about the topic
-• Second detailed point with specific data or example
-• Third point explaining a key concept
-• Fourth point about practical applications
-• Fifth point about current industry trends
+• First detailed point about the topic with specific data
+• Second detailed point with a concrete example or statistic
+• Third point explaining a key concept clearly
+• Fourth point about practical real-world applications
+• Fifth point about current industry trends and adoption
+• Sixth point about challenges and how they are addressed
 
 [Next Section Heading]
 • Point 1
@@ -133,8 +135,9 @@ Introduction to {topic}
 • Point 3
 • Point 4
 • Point 5
+• Point 6
 
-Write the full content now:"""
+Write the full {num_slides}-section content now (NO markdown, NO ---, plain text only):"""
 
     elif content_type == "letter":
         return f"""Write a formal professional email about: {topic}
@@ -178,6 +181,51 @@ Requirements:
 {f'- Additional requirements: {extra}' if extra else ''}
 
 Write the report now:"""
+
+    elif content_type == "proposal":
+        return f"""Write a detailed professional project proposal for: {topic}
+
+Requirements:
+- Project title
+- Executive Summary (3-4 sentences describing the project)
+- Problem Statement (2-3 paragraphs: the problem, who is affected, why it matters)
+- Proposed Solution (2-3 paragraphs: what the product/service does, key features)
+- Target Market (who the customers are, market size, why now)
+- Key Features & Benefits (list 6-8 detailed features with descriptions)
+- Technical Architecture / How It Works (3-4 paragraphs)
+- Business Model & Revenue Streams (how it makes money, pricing strategy)
+- Implementation Roadmap (3 phases with timeline)
+- Team & Resources Required
+- Budget Estimate (rough breakdown)
+- Conclusion & Call to Action
+{f'- Additional context: {extra}' if extra else ''}
+
+Write at least 600 words. Use proper headings. Write now:"""
+
+    elif content_type == "essay":
+        return f"""Write a well-structured essay about: {topic}
+
+Requirements:
+- Engaging introduction with thesis statement (2 paragraphs)
+- 4-5 body paragraphs, each with a clear topic sentence and 3-4 supporting sentences
+- Use examples, data, and evidence
+- Conclusion that restates thesis and gives broader perspective (2 paragraphs)
+{f'- Additional requirements: {extra}' if extra else ''}
+
+Write at least 500 words. Write now:"""
+
+    elif content_type == "document":
+        return f"""Write a detailed, well-structured professional document about: {topic}
+
+Requirements:
+- Clear title
+- Introduction section (2-3 paragraphs)
+- 4-5 main sections with descriptive headings
+- Each section: 3-4 detailed paragraphs
+- Summary/Conclusion section
+{f'- Additional requirements: {extra}' if extra else ''}
+
+Write at least 500 words with proper structure. Write now:"""
 
     elif content_type == "summary":
         return f"""Summarize the following text in 2-3 concise bullet points:

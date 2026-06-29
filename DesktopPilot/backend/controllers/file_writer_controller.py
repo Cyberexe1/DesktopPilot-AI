@@ -115,7 +115,8 @@ def create_file(filename: str, content: str = "", directory: str = "", slides: i
         ext = os.path.splitext(safe_name)[1].lower()
 
         if ext == ".docx":
-            _create_docx(filepath, content)
+            enriched = _enrich_docx_content(content, safe_name)
+            _create_docx(filepath, enriched)
         elif ext == ".pptx":
             # For presentations, enrich content if too sparse
             enriched = _enrich_pptx_content(content, safe_name, requested_slides=slides)
@@ -520,6 +521,43 @@ def _create_docx(filepath: str, content: str):
     doc.save(filepath)
 
 
+def _enrich_docx_content(content: str, filename: str) -> str:
+    """
+    Enrich sparse Word document content via a dedicated Bedrock call.
+    The planner's 1024-token limit is too tight for full documents — this
+    second call generates 2000-3000 tokens of rich content.
+    """
+    lines = [l.strip() for l in content.split('\n') if l.strip()]
+    # If content is already substantial (>30 lines), use as-is
+    if len(lines) >= 30:
+        return content
+
+    # Derive topic from filename and content
+    topic = filename.replace('.docx', '').replace('_', ' ').replace('-', ' ').strip()
+    if lines:
+        topic = lines[0]
+
+    # Detect document type from topic / content
+    full_lower = content.lower() + ' ' + topic.lower()
+    if any(k in full_lower for k in ['proposal', 'project', 'plan', 'pitch']):
+        content_type = "proposal"
+    elif any(k in full_lower for k in ['report', 'analysis', 'research', 'study']):
+        content_type = "report"
+    elif any(k in full_lower for k in ['letter', 'email', 'dear', 'sincerely']):
+        content_type = "letter"
+    elif any(k in full_lower for k in ['essay', 'article', 'blog']):
+        content_type = "essay"
+    else:
+        content_type = "document"
+
+    extra = f"Key points to cover: {', '.join(lines[1:6])}" if lines[1:] else ""
+
+    from ai.content_generator import generate_content
+    log.info(f"Enriching docx via Bedrock: '{topic}' (type={content_type})")
+    return generate_content(topic=topic, content_type=content_type,
+                            num_slides=0, extra_instructions=extra)
+
+
 def _enrich_pptx_content(content: str, filename: str, requested_slides: int = 0) -> str:
     """
     If AI-generated content is too sparse, call Bedrock AGAIN
@@ -746,9 +784,80 @@ def _create_pptx(filepath: str, content: str):
              size=Pt(10), color=LIGHT_GRAY, align=PP_ALIGN.CENTER)
 
     # ════════════════════════════════════════════════════
-    # CONTENT SLIDES
+    # CONTENT SLIDES  (with KPI card + section dividers)
     # ════════════════════════════════════════════════════
+
+    # ── Helper: KPI stats slide (big numbers) ──
+    def _add_kpi_slide(stats_titles):
+        """Add a visual 'key numbers' slide with 3-4 big colored stat boxes."""
+        s = prs.slides.add_slide(prs.slide_layouts[6])
+        _dark_bg(s)
+        _textbox(s, "Key Highlights",
+                 Inches(0.5), Inches(0.2), Inches(12.0), Inches(0.7),
+                 size=Pt(28), bold=True, color=WHITE, align=PP_ALIGN.CENTER)
+        _hrule(s, Inches(1.0), ACCENT1)
+        from pptx.enum.shapes import MSO_SHAPE
+        colors_kpi = [ACCENT1, ACCENT2, RGBColor(0x70, 0xAD, 0x47), RGBColor(0xFF, 0x64, 0x45)]
+        icons      = ["01", "02", "03", "04"]
+        box_w, box_h = Inches(2.8), Inches(2.8)
+        gap = Inches(0.55)
+        start_x = Inches(0.6)
+        top_y   = Inches(1.5)
+        items = stats_titles[:4]
+        for ki, label in enumerate(items):
+            bx = start_x + ki * (box_w + gap)
+            box = s.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE,
+                                     bx, top_y, box_w, box_h)
+            box.fill.solid(); box.fill.fore_color.rgb = colors_kpi[ki % 4]
+            box.line.fill.background()
+            # Big number / icon
+            _textbox(s, icons[ki], bx, top_y + Inches(0.2), box_w, Inches(0.8),
+                     size=Pt(36), bold=True, color=WHITE, align=PP_ALIGN.CENTER)
+            # Short label (wrap if long)
+            short = label[:40]
+            _textbox(s, short, bx + Inches(0.1), top_y + Inches(1.0),
+                     box_w - Inches(0.2), Inches(1.6),
+                     size=Pt(14), color=WHITE, align=PP_ALIGN.CENTER)
+        _textbox(s, title_text,
+                 Inches(0.5), Inches(7.1), Inches(12.0), Inches(0.3),
+                 size=Pt(9), color=RGBColor(0x55, 0x77, 0x99), align=PP_ALIGN.CENTER)
+
+    # ── Helper: section divider slide ──
+    def _add_divider_slide(section_title, section_num):
+        s = prs.slides.add_slide(prs.slide_layouts[6])
+        _dark_bg(s)
+        from pptx.enum.shapes import MSO_SHAPE
+        # Full-width accent bar (top third)
+        bar = s.shapes.add_shape(MSO_SHAPE.RECTANGLE,
+                                 Inches(0), Inches(0), SLIDE_W, Inches(2.8))
+        bar.fill.solid()
+        bar.fill.fore_color.rgb = ACCENT1 if section_num % 2 == 0 else ACCENT2
+        bar.line.fill.background()
+        # Section number
+        _textbox(s, f"SECTION {section_num:02d}",
+                 Inches(1.0), Inches(0.4), Inches(11.0), Inches(0.7),
+                 size=Pt(16), bold=True, color=RGBColor(0xFF, 0xFF, 0xFF),
+                 align=PP_ALIGN.CENTER)
+        # Section title — large, centered
+        _textbox(s, section_title,
+                 Inches(0.8), Inches(3.2), Inches(11.5), Inches(2.0),
+                 size=Pt(36), bold=True, color=WHITE, align=PP_ALIGN.CENTER)
+        _hrule(s, Inches(5.4), ACCENT1 if section_num % 2 == 0 else ACCENT2)
+
+    # ── Insert KPI slide after slide 0 (using first 4 section titles) ──
+    if len(slides_data) >= 2:
+        kpi_titles = [sd["title"] for sd in slides_data if sd["title"]][:4]
+        _add_kpi_slide(kpi_titles)
+
+    # ── Content slides with dividers every 3 slides ──
+    divider_count = 0
     for idx, sd in enumerate(slides_data[:30]):
+        # Insert a section divider every 3 content slides (skip the first group)
+        if idx > 0 and idx % 3 == 0:
+            divider_count += 1
+            _add_divider_slide(sd["title"] or f"Section {divider_count + 1}",
+                               divider_count + 1)
+
         slide = prs.slides.add_slide(prs.slide_layouts[6])
         _dark_bg(slide)
 
@@ -769,11 +878,11 @@ def _create_pptx(filepath: str, content: str):
         _hrule(slide, Inches(1.25), ACCENT1 if idx % 2 == 0 else ACCENT2)
 
         # Bullets
-        bullets = sd["bullets"][:7]  # Max 7 bullets
+        bullets = sd["bullets"][:5]  # Max 5 bullets — keep slides clean
         if bullets:
             bullet_top = Inches(1.5)
             spacing    = (SLIDE_H - bullet_top - Inches(0.5)) / max(len(bullets), 1)
-            spacing    = min(spacing, Inches(0.75))
+            spacing    = min(spacing, Inches(0.9))
 
             for j, bullet in enumerate(bullets):
                 y = bullet_top + (j * spacing)

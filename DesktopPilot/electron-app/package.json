@@ -1,6 +1,6 @@
 {
   "name": "desktoppilot-agent",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "DesktopPilot AI — Local Desktop Agent",
   "author": "DesktopPilot AI",
   "main": "electron/main.js",

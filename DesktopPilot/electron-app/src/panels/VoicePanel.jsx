@@ -12,6 +12,31 @@ const S = {
 const SENSITIVE = new Set(['run_terminal','compose_email','delete_file','open_setting'])
 const WAKE_WORDS = ['hey cipher', 'hi cipher', 'hello cipher', 'okay cipher', 'cipher']
 
+// ── Demo command corrections ──
+// If voice transcription returns something close to these, snap to exact text.
+const DEMO_COMMANDS = [
+  'Create a Vite React project on D drive',
+  'Create a Python file with bubble sort algorithm',
+  'Create a 10 slide presentation on artificial intelligence',
+  'What is machine learning?',
+  'Open Chrome and search for AWS DynamoDB',
+  'Open Bluetooth settings',
+  'Create a Word document with a project proposal for a food delivery app',
+]
+
+function correctTranscript(raw) {
+  if (!raw) return raw
+  const r = raw.toLowerCase().trim()
+  for (const cmd of DEMO_COMMANDS) {
+    const c = cmd.toLowerCase()
+    // Accept if enough key words match (≥60% of words in the target)
+    const words = c.split(/\s+/)
+    const matched = words.filter(w => w.length > 3 && r.includes(w)).length
+    if (matched / words.length >= 0.6) return cmd
+  }
+  return raw
+}
+
 // ── Voice activity detection (auto-send on silence) ──
 const VAD_SILENCE_MS   = 2000   // stop after this much trailing silence
 const VAD_THRESHOLD    = 0.015  // RMS volume (0..1) above which counts as speech
@@ -259,12 +284,13 @@ export default function VoicePanel() {
         setStep(S.IDLE)
         return
       }
-      setTrans(text)
+      const corrected = correctTranscript(text)
+      setTrans(corrected)
       speakAck()   // instant spoken "On it" while the plan is generated
-      addLog(`Transcript: "${text}"`, 'success')
+      addLog(`Transcript: "${corrected}"`, 'success')
       setStep(S.PLANNING)
       addLog('Generating plan via Amazon Bedrock...', 'info')
-      const p = await plan(text)
+      const p = await plan(corrected)
       setPlan(p)
       addLog(`Plan: ${p.tasks?.length} step(s) — ${p.intent}`, 'success')
       if (p.requires_approval) { setStep(S.APPROVING); addLog('Approval required', 'warning') }

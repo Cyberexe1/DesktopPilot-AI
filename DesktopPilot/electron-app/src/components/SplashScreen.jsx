@@ -212,7 +212,7 @@ export default function SplashScreen({ onComplete }) {
       </div>
 
       {/* ── Version ──────────────────────────────────────────── */}
-      <div className="splash__version">DesktopPilot AI · v2.0.0</div>
+      <div className="splash__version">DesktopPilot AI · v1.1.0</div>
 
     </div>
   )

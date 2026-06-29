@@ -99,7 +99,10 @@ def speak_nonblocking(text: str):
                 pythoncom.CoInitialize()
             except Exception:
                 pass  # pythoncom not available — proceed anyway
-            # Non-blocking uses a fresh pyttsx3 instance to avoid lock contention
+            # Non-blocking uses a fresh pyttsx3 instance to avoid lock contention.
+            # If pyttsx3's run loop is already active (e.g. main thread is speaking),
+            # fall back to the PowerShell SAPI path which spawns a separate process
+            # and never conflicts.
             import pyttsx3
             engine = pyttsx3.init()
             engine.setProperty("rate", 185)
@@ -113,8 +116,8 @@ def speak_nonblocking(text: str):
             engine.runAndWait()
             engine.stop()
         except Exception as e:
-            log.warning(f"Non-blocking speak failed: {e}")
-            _fallback_speak(text)
+            log.warning(f"Non-blocking speak failed: {e} — using PowerShell fallback")
+            _fallback_speak(text)  # spawns its own process, no loop conflicts
 
     t = threading.Thread(target=_speak_thread, daemon=True)
     t.start()

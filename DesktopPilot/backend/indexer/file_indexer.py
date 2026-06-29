@@ -120,6 +120,7 @@ def discover_projects() -> list[dict]:
         rf"C:\Users\{_USER}\Projects",
         os.path.expanduser("~/Projects"),
         os.path.expanduser("~/Documents"),
+        os.path.expanduser("~/Desktop"),   # projects created on Desktop
     ]
 
     discovered = []
@@ -147,6 +148,21 @@ def discover_projects() -> list[dict]:
                                 with open(marker_path, encoding="utf-8") as f:
                                     pkg  = json.load(f)
                                     name = pkg.get("name", entry.name)
+                                    # Detect framework from devDependencies/scripts
+                                    dev_deps = pkg.get("devDependencies", {})
+                                    scripts  = pkg.get("scripts", {})
+                                    if "vite" in dev_deps or "vite" in str(scripts):
+                                        framework = "Vite/React"
+                                        start_cmd = "npm run dev"
+                                    elif "next" in dev_deps or "next" in str(scripts):
+                                        framework = "Next.js"
+                                        start_cmd = "npm run dev"
+                                    elif "react-scripts" in dev_deps:
+                                        framework = "React (CRA)"
+                                        start_cmd = "npm start"
+                                    elif "angular" in dev_deps or "@angular/core" in dev_deps:
+                                        framework = "Angular"
+                                        start_cmd = "npm start"
                             except Exception:
                                 pass
 

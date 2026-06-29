@@ -12,7 +12,9 @@ import logging
 
 log = logging.getLogger(__name__)
 
-SAMPLE_RATE = 16000
+SAMPLE_RATE  = 16000
+LANGUAGE     = os.getenv("TRANSCRIBE_LANGUAGE", "en-IN")   # en-IN for Indian English
+VOCAB_NAME   = os.getenv("TRANSCRIBE_VOCAB", "DesktopPilotVocab")
 
 
 def _to_pcm16(audio_bytes: bytes) -> bytes:
@@ -48,9 +50,10 @@ async def transcribe_stream(audio_bytes: bytes, region: str = "us-east-1") -> st
 
     client = TranscribeStreamingClient(region=region)
     stream = await client.start_stream_transcription(
-        language_code="en-US",
+        language_code=LANGUAGE,
         media_sample_rate_hz=SAMPLE_RATE,
         media_encoding="pcm",
+        vocabulary_name=VOCAB_NAME,
     )
 
     final_parts: list[str] = []

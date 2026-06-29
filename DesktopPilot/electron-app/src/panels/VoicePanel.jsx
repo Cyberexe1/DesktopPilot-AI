@@ -338,19 +338,13 @@ export default function VoicePanel() {
         // Animate the waveform for the full duration of the actual speech.
         let speakDuration
         if (results.speechMs && results.speechMs > 0) {
-          // Backend told us exactly how long the speech is
           speakDuration = results.speechMs + 400
+        } else if (results.spokenText) {
+          // Estimate from the spoken text the backend sent (~2.75 words/sec)
+          const words = results.spokenText.trim().split(/\s+/).length
+          speakDuration = Math.min(Math.max((words / 2.75) * 1000 + 600, 2500), 20000)
         } else {
-          // Fallback: estimate from the longest spoken result message
-          // (~2.75 words/sec speaking rate)
-          const spokenMsg = results.reduce(
-            (longest, r) => (r.message && r.message.length > longest.length ? r.message : longest),
-            ''
-          )
-          const words = spokenMsg.trim() ? spokenMsg.trim().split(/\s+/).length : 0
-          speakDuration = words > 0
-            ? Math.min(Math.max((words / 2.75) * 1000 + 600, 2000), 20000)
-            : 3000
+          speakDuration = 3000
         }
         setTimeout(() => setStep(S.DONE), speakDuration)
       } else {

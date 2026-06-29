@@ -28,10 +28,8 @@ def _get_engine():
                 try:
                     import pyttsx3
                     engine = pyttsx3.init()
-                    # Configure voice: slower rate for clarity, female voice preferred
-                    engine.setProperty("rate", 175)    # words per minute (default ~200)
+                    engine.setProperty("rate", 175)
                     engine.setProperty("volume", 0.92)
-                    # Try to select a natural-sounding voice
                     voices = engine.getProperty("voices")
                     for v in voices:
                         if "zira" in v.name.lower() or "female" in v.name.lower():
@@ -48,31 +46,22 @@ def _get_engine():
 # ── Public API ────────────────────────────────────────────────────────────────
 
 def speak(text: str) -> str:
-    """
-    Blocking speech — waits until SAPI finishes speaking.
-    Use for final responses after task execution.
-    """
+    """Blocking speech — waits until SAPI finishes speaking."""
     if not text or not text.strip():
         return "Nothing to speak"
-
     text = text.strip()
-    # Truncate very long outputs (don't read entire system info aloud)
     if len(text) > 300:
         text = text[:300] + "..."
-
     try:
         engine = _get_engine()
         if engine is None:
             _fallback_speak(text)
             return f"Spoke (fallback): {text[:60]}"
-
         with _sapi_lock:
             engine.say(text)
             engine.runAndWait()
-
         log.info(f"Spoke: '{text[:60]}'")
         return f"Spoke: {text[:60]}"
-
     except Exception as e:
         log.warning(f"SAPI speak failed: {e} — trying fallback")
         _fallback_speak(text)
@@ -82,42 +71,14 @@ def speak(text: str) -> str:
 def speak_nonblocking(text: str):
     """
     Fire-and-forget speech — returns IMMEDIATELY.
-    SAPI speaks in a background daemon thread.
-
-    Use for:
-      • Acknowledgment phrases ("Got it, Sir.") fired while Bedrock is planning
-      • Any speech that should not block the main pipeline
+    Always uses PowerShell SAPI to avoid pyttsx3 run-loop conflicts
+    when the main thread engine is already active.
     """
     if not text or not text.strip():
         return
 
     def _speak_thread():
-        try:
-            # CoInitialize is required for Windows COM (SAPI) in a background thread.
-            try:
-                import pythoncom
-                pythoncom.CoInitialize()
-            except Exception:
-                pass  # pythoncom not available — proceed anyway
-            # Non-blocking uses a fresh pyttsx3 instance to avoid lock contention.
-            # If pyttsx3's run loop is already active (e.g. main thread is speaking),
-            # fall back to the PowerShell SAPI path which spawns a separate process
-            # and never conflicts.
-            import pyttsx3
-            engine = pyttsx3.init()
-            engine.setProperty("rate", 185)
-            engine.setProperty("volume", 0.9)
-            voices = engine.getProperty("voices")
-            for v in voices:
-                if "zira" in v.name.lower() or "female" in v.name.lower():
-                    engine.setProperty("voice", v.id)
-                    break
-            engine.say(text.strip())
-            engine.runAndWait()
-            engine.stop()
-        except Exception as e:
-            log.warning(f"Non-blocking speak failed: {e} — using PowerShell fallback")
-            _fallback_speak(text)  # spawns its own process, no loop conflicts
+        _fallback_speak(text)
 
     t = threading.Thread(target=_speak_thread, daemon=True)
     t.start()
@@ -125,13 +86,14 @@ def speak_nonblocking(text: str):
 
 
 def _fallback_speak(text: str):
-    """
-    Windows SAPI via PowerShell — no Python dependency needed.
-    Last resort fallback if pyttsx3 fails.
-    """
+    """Windows SAPI via PowerShell — no Python dependency, no loop conflicts."""
     import subprocess
     try:
-        ps_script = f'Add-Type -AssemblyName System.Speech; $s = New-Object System.Speech.Synthesis.SpeechSynthesizer; $s.Speak("{text[:200]}")'
+        ps_script = (
+            'Add-Type -AssemblyName System.Speech; '
+            '$s = New-Object System.Speech.Synthesis.SpeechSynthesizer; '
+            f'$s.Speak("{text[:200]}")'
+        )
         subprocess.Popen(
             ["powershell", "-WindowStyle", "Hidden", "-Command", ps_script],
             stdout=subprocess.DEVNULL,

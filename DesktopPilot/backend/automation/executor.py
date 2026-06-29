@@ -829,6 +829,7 @@ HANDLERS = {
     "open_application":        _h_open_application,
     "open_project":            _h_open_project,
     "open_file":               _h_open_file,
+    "open_folder":             _h_open_file,   # alias — open a folder the same way
     # browser
     "open_browser":            _h_open_browser,
     "navigate":                _h_navigate,

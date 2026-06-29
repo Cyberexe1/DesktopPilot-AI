@@ -181,6 +181,15 @@ def create_project(project_name: str, framework: str, directory: str = "") -> st
     return f"Setting up {framework} project '{project_name}' in terminal at {directory}. VS Code will open when ready."
 
 
+def _open_vscode_cmd() -> str:
+    """Return a CMD snippet that opens VS Code robustly (code on PATH or full path fallback)."""
+    vscode_full = rf"C:\Users\{_USER}\AppData\Local\Programs\Microsoft VS Code\Code.exe"
+    return (
+        f'where code >nul 2>&1 && code . || '
+        f'if exist "{vscode_full}" ("{vscode_full}" .) else echo VS Code not found, please open manually'
+    )
+
+
 def _get_project_commands(name: str, framework: str, directory: str) -> str:
     """
     Return the full command string to set up a project.
@@ -189,62 +198,68 @@ def _get_project_commands(name: str, framework: str, directory: str) -> str:
     project_path = os.path.join(directory, name)
 
     if framework in ("vite", "react", "react-vite"):
+        ovc = _open_vscode_cmd()
         return (
             f'cd /d "{directory}" && '
             f'npm create vite@latest {name} -- --template react && '
             f'cd {name} && '
             f'npm install && '
-            f'code . && '
+            f'timeout /t 2 /nobreak >nul && {ovc} && '
             f'echo Project ready! You can run: npm run dev'
         )
 
     elif framework in ("nextjs", "next", "next.js"):
+        ovc = _open_vscode_cmd()
         return (
             f'cd /d "{directory}" && '
             f'npx create-next-app@latest {name} --js --no-tailwind --no-eslint --app --use-npm && '
             f'cd {name} && '
-            f'code . && '
+            f'timeout /t 2 /nobreak >nul && {ovc} && '
             f'echo Project ready! You can run: npm run dev'
         )
 
     elif framework in ("nodejs", "node", "express"):
+        ovc = _open_vscode_cmd()
         return (
             f'cd /d "{directory}" && '
             f'mkdir {name} && cd {name} && '
             f'npm init -y && '
             f'npm install express && '
-            f'code . && '
+            f'timeout /t 1 /nobreak >nul && {ovc} && '
             f'echo Project ready! You can run: node index.js'
         )
 
     elif framework in ("django",):
+        ovc = _open_vscode_cmd()
         return (
             f'cd /d "{directory}" && '
             f'mkdir {name} && cd {name} && '
             f'python -m venv venv && '
             f'venv\\Scripts\\pip install django && '
             f'venv\\Scripts\\django-admin startproject {name} . && '
-            f'code . && '
+            f'timeout /t 1 /nobreak >nul && {ovc} && '
             f'echo Project ready! Activate venv then run: python manage.py runserver'
         )
 
     elif framework in ("fastapi", "fast-api"):
+        ovc = _open_vscode_cmd()
         return (
             f'cd /d "{directory}" && '
             f'mkdir {name} && cd {name} && '
             f'python -m venv venv && '
             f'venv\\Scripts\\pip install fastapi uvicorn && '
-            f'code . && '
+            f'timeout /t 1 /nobreak >nul && {ovc} && '
             f'echo Project ready! Activate venv then run: uvicorn main:app --reload'
         )
 
     elif framework in ("python", "flask"):
+        ovc = _open_vscode_cmd()
         return (
             f'cd /d "{directory}" && '
             f'mkdir {name} && cd {name} && '
             f'python -m venv venv && '
             f'venv\\Scripts\\pip install flask && '
-            f'code . && '
+            f'timeout /t 1 /nobreak >nul && {ovc} && '
             f'echo Project ready! Activate venv then run: python app.py'
         )
 

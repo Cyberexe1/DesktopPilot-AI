@@ -9,6 +9,7 @@ chain (the App Runner instance role provides them automatically).
 import asyncio
 import io
 import logging
+import os
 
 log = logging.getLogger(__name__)
 
